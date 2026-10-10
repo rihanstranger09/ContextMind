@@ -31,7 +31,8 @@ Public hosting may incur charges. This prototype has no authentication or rate l
 
 ### Final submission checklist
 
-- [ ] Confirm the implementation branch is pushed to GitHub and selected for deployment.
+- [x] Implementation pushed to GitHub on `arena/10eeec69-contextmind`.
+- [ ] Select that branch for Railway deployment.
 - [ ] Deploy the app and test the public URL (including `/demo.html` and `/api/health`).
 - [ ] Add the verified public deployment link to this README and update the badge.
 - [x] Demo instructions visible from the dashboard.
