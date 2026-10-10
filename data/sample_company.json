@@ -1,0 +1,632 @@
+{
+  "nodes": [
+    {
+      "id": "team_platform",
+      "type": "Team",
+      "name": "Platform Engineering",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo"
+    },
+    {
+      "id": "team_payments",
+      "type": "Team",
+      "name": "Payments Engineering",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo"
+    },
+    {
+      "id": "team_data",
+      "type": "Team",
+      "name": "Data Engineering",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo"
+    },
+    {
+      "id": "team_security",
+      "type": "Team",
+      "name": "Security",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo"
+    },
+    {
+      "id": "team_product",
+      "type": "Team",
+      "name": "Product",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo"
+    },
+    {
+      "id": "person_david",
+      "type": "Person",
+      "name": "David Brown",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "title": "Platform Engineering Lead",
+      "availability": "AVAILABLE",
+      "on_call": true
+    },
+    {
+      "id": "person_alice",
+      "type": "Person",
+      "name": "Alice Johnson",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "title": "Senior Backend Engineer",
+      "availability": "AVAILABLE",
+      "on_call": false
+    },
+    {
+      "id": "person_carol",
+      "type": "Person",
+      "name": "Carol Williams",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "title": "Data Engineer",
+      "availability": "AVAILABLE",
+      "on_call": false
+    },
+    {
+      "id": "person_bob",
+      "type": "Person",
+      "name": "Bob Smith",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "title": "Product Manager",
+      "availability": "AVAILABLE",
+      "on_call": false
+    },
+    {
+      "id": "sys_database",
+      "type": "System",
+      "name": "Database Cluster",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "criticality": "CRITICAL",
+      "aliases": [
+        "postgres",
+        "postgresql",
+        "database",
+        "db"
+      ],
+      "environment": "production"
+    },
+    {
+      "id": "sys_gateway",
+      "type": "System",
+      "name": "API Gateway",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "criticality": "CRITICAL",
+      "aliases": [
+        "gateway service",
+        "edge gateway",
+        "api-gateway"
+      ],
+      "environment": "production"
+    },
+    {
+      "id": "sys_payment",
+      "type": "System",
+      "name": "Payment Service",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "criticality": "CRITICAL",
+      "aliases": [
+        "payment infrastructure",
+        "payments infrastructure"
+      ],
+      "environment": "production"
+    },
+    {
+      "id": "sys_redis",
+      "type": "System",
+      "name": "Redis Cache",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "criticality": "CRITICAL",
+      "aliases": [
+        "redis"
+      ],
+      "environment": "production"
+    },
+    {
+      "id": "sys_kafka",
+      "type": "System",
+      "name": "Kafka Event Bus",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "criticality": "HIGH",
+      "aliases": [
+        "kafka"
+      ],
+      "environment": "production"
+    },
+    {
+      "id": "sys_analytics",
+      "type": "System",
+      "name": "Analytics Platform",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "criticality": "HIGH",
+      "aliases": [],
+      "environment": "production"
+    },
+    {
+      "id": "sys_auth",
+      "type": "System",
+      "name": "Authentication Service",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "criticality": "HIGH",
+      "aliases": [
+        "auth service"
+      ],
+      "environment": "production"
+    },
+    {
+      "id": "project_payments",
+      "type": "Project",
+      "name": "Payments v2 Launch",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "status": "IN_PROGRESS",
+      "aliases": [
+        "Q4 launch",
+        "Payments v2"
+      ]
+    },
+    {
+      "id": "project_analytics",
+      "type": "Project",
+      "name": "Analytics Migration",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "status": "BLOCKED",
+      "aliases": []
+    },
+    {
+      "id": "project_security",
+      "type": "Project",
+      "name": "Security Compliance Upgrade",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "status": "IN_PROGRESS",
+      "aliases": []
+    },
+    {
+      "id": "project_mobile",
+      "type": "Project",
+      "name": "Mobile App Redesign",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "status": "IN_PROGRESS",
+      "aliases": []
+    },
+    {
+      "id": "doc_database",
+      "type": "Document",
+      "name": "Database Cluster failover runbook",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "content": "Platform Engineering owns the Database Cluster. David Brown is the on-call lead. Verify replication lag before failover; involve Carol Williams for replication diagnostics.",
+      "url": "https://novapay.example/docs/database"
+    },
+    {
+      "id": "doc_gateway",
+      "type": "Document",
+      "name": "API Gateway runbook",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "content": "Platform Engineering owns API Gateway. David Brown leads incident response. Alice Johnson has routing and payment incident experience.",
+      "url": "https://novapay.example/docs/gateway"
+    },
+    {
+      "id": "doc_payments",
+      "type": "Document",
+      "name": "Payments v2 architecture",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "content": "Payments v2 Launch uses Payment Service and API Gateway. Payment Service depends on both API Gateway and Database Cluster.",
+      "url": "https://novapay.example/docs/payments"
+    },
+    {
+      "id": "doc_analytics",
+      "type": "Document",
+      "name": "Analytics migration RFC",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "content": "Analytics Platform depends on Database Cluster and Kafka Event Bus. Migration requires replication lag below the agreed threshold.",
+      "url": "https://novapay.example/docs/analytics"
+    },
+    {
+      "id": "ticket_replication",
+      "type": "Ticket",
+      "name": "DB-212 \u00b7 Replication lag exceeds threshold",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "status": "OPEN",
+      "priority": "CRITICAL",
+      "content": "Replication lag remains above the migration acceptance threshold. Analytics Migration is blocked pending replication validation.",
+      "url": "https://novapay.example/tickets/DB-212"
+    },
+    {
+      "id": "ticket_launch",
+      "type": "Ticket",
+      "name": "PAY-128 \u00b7 Failover validation",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "status": "IN_PROGRESS",
+      "priority": "HIGH",
+      "content": "Payments v2 launch is blocked until database failover validation is complete.",
+      "url": "https://novapay.example/tickets/PAY-128"
+    },
+    {
+      "id": "incident_114",
+      "type": "Incident",
+      "name": "INC-114 \u00b7 Payment request timeouts",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "status": "RESOLVED",
+      "content": "Database latency propagated through API Gateway and caused payment request timeouts. Alice Johnson resolved the upstream routing configuration issue.",
+      "url": "https://novapay.example/incidents/114",
+      "timestamp": "2026-09-21T16:30:00Z"
+    },
+    {
+      "id": "message_replication",
+      "type": "Message",
+      "name": "#data-platform \u00b7 Migration readiness",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "content": "Carol: Replication validation is incomplete. Keep Analytics Migration paused until DB-212 is resolved.",
+      "url": "https://novapay.example/chat/migration-readiness",
+      "timestamp": "2026-10-01T10:30:00Z"
+    },
+    {
+      "id": "meeting_planning",
+      "type": "Meeting",
+      "name": "Engineering migration review",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "content": "Engineering reviewed replication risk and approved delaying Analytics Migration.",
+      "timestamp": "2026-10-02T09:00:00Z",
+      "url": "https://novapay.example/meetings/migration-review"
+    },
+    {
+      "id": "decision_delay",
+      "type": "Decision",
+      "name": "Delay Analytics Migration",
+      "updated_at": "2026-10-08T10:00:00Z",
+      "source": "novapay-demo",
+      "rationale": "Database replication reliability was not sufficient for migration.",
+      "status": "APPROVED",
+      "created_at": "2026-10-02T11:00:00Z"
+    }
+  ],
+  "edges": [
+    {
+      "source": "person_david",
+      "type": "MEMBER_OF",
+      "target": "team_platform"
+    },
+    {
+      "source": "person_david",
+      "type": "LEADS",
+      "target": "team_platform"
+    },
+    {
+      "source": "person_alice",
+      "type": "MEMBER_OF",
+      "target": "team_payments"
+    },
+    {
+      "source": "person_alice",
+      "type": "LEADS",
+      "target": "team_payments"
+    },
+    {
+      "source": "person_carol",
+      "type": "MEMBER_OF",
+      "target": "team_data"
+    },
+    {
+      "source": "person_carol",
+      "type": "LEADS",
+      "target": "team_data"
+    },
+    {
+      "source": "person_bob",
+      "type": "MEMBER_OF",
+      "target": "team_product"
+    },
+    {
+      "source": "person_bob",
+      "type": "LEADS",
+      "target": "team_product"
+    },
+    {
+      "source": "team_platform",
+      "type": "OWNS",
+      "target": "sys_database"
+    },
+    {
+      "source": "team_platform",
+      "type": "OWNS",
+      "target": "sys_gateway"
+    },
+    {
+      "source": "team_payments",
+      "type": "OWNS",
+      "target": "sys_payment"
+    },
+    {
+      "source": "team_data",
+      "type": "OWNS",
+      "target": "sys_kafka"
+    },
+    {
+      "source": "team_data",
+      "type": "OWNS",
+      "target": "sys_analytics"
+    },
+    {
+      "source": "team_platform",
+      "type": "OWNS",
+      "target": "sys_auth"
+    },
+    {
+      "source": "sys_gateway",
+      "type": "DEPENDS_ON",
+      "target": "sys_database"
+    },
+    {
+      "source": "sys_payment",
+      "type": "DEPENDS_ON",
+      "target": "sys_gateway"
+    },
+    {
+      "source": "sys_payment",
+      "type": "DEPENDS_ON",
+      "target": "sys_database"
+    },
+    {
+      "source": "sys_analytics",
+      "type": "DEPENDS_ON",
+      "target": "sys_database"
+    },
+    {
+      "source": "sys_analytics",
+      "type": "DEPENDS_ON",
+      "target": "sys_kafka"
+    },
+    {
+      "source": "sys_auth",
+      "type": "DEPENDS_ON",
+      "target": "sys_database"
+    },
+    {
+      "source": "sys_gateway",
+      "type": "DEPENDS_ON",
+      "target": "sys_redis"
+    },
+    {
+      "source": "project_payments",
+      "type": "USES",
+      "target": "sys_payment"
+    },
+    {
+      "source": "project_payments",
+      "type": "USES",
+      "target": "sys_gateway"
+    },
+    {
+      "source": "project_analytics",
+      "type": "USES",
+      "target": "sys_analytics"
+    },
+    {
+      "source": "project_security",
+      "type": "USES",
+      "target": "sys_auth"
+    },
+    {
+      "source": "project_mobile",
+      "type": "USES",
+      "target": "sys_gateway"
+    },
+    {
+      "source": "person_alice",
+      "type": "WORKED_ON",
+      "target": "project_payments"
+    },
+    {
+      "source": "person_alice",
+      "type": "OWNS",
+      "target": "project_payments"
+    },
+    {
+      "source": "person_carol",
+      "type": "WORKED_ON",
+      "target": "project_analytics"
+    },
+    {
+      "source": "person_carol",
+      "type": "OWNS",
+      "target": "project_analytics"
+    },
+    {
+      "source": "person_david",
+      "type": "WORKED_ON",
+      "target": "project_security"
+    },
+    {
+      "source": "person_david",
+      "type": "OWNS",
+      "target": "project_security"
+    },
+    {
+      "source": "person_bob",
+      "type": "WORKED_ON",
+      "target": "project_mobile"
+    },
+    {
+      "source": "person_bob",
+      "type": "OWNS",
+      "target": "project_mobile"
+    },
+    {
+      "source": "person_david",
+      "type": "WORKED_ON",
+      "target": "sys_database"
+    },
+    {
+      "source": "person_david",
+      "type": "WORKED_ON",
+      "target": "sys_gateway"
+    },
+    {
+      "source": "person_alice",
+      "type": "WORKED_ON",
+      "target": "sys_payment"
+    },
+    {
+      "source": "person_alice",
+      "type": "WORKED_ON",
+      "target": "sys_gateway"
+    },
+    {
+      "source": "person_carol",
+      "type": "WORKED_ON",
+      "target": "sys_database"
+    },
+    {
+      "source": "person_carol",
+      "type": "WORKED_ON",
+      "target": "sys_analytics"
+    },
+    {
+      "source": "doc_database",
+      "type": "ABOUT",
+      "target": "sys_database"
+    },
+    {
+      "source": "person_david",
+      "type": "AUTHORED",
+      "target": "doc_database"
+    },
+    {
+      "source": "doc_gateway",
+      "type": "ABOUT",
+      "target": "sys_gateway"
+    },
+    {
+      "source": "person_alice",
+      "type": "AUTHORED",
+      "target": "doc_gateway"
+    },
+    {
+      "source": "doc_payments",
+      "type": "ABOUT",
+      "target": "sys_payment"
+    },
+    {
+      "source": "person_alice",
+      "type": "AUTHORED",
+      "target": "doc_payments"
+    },
+    {
+      "source": "doc_analytics",
+      "type": "ABOUT",
+      "target": "sys_analytics"
+    },
+    {
+      "source": "person_carol",
+      "type": "AUTHORED",
+      "target": "doc_analytics"
+    },
+    {
+      "source": "ticket_replication",
+      "type": "BLOCKS",
+      "target": "project_analytics"
+    },
+    {
+      "source": "ticket_replication",
+      "type": "ABOUT",
+      "target": "sys_database"
+    },
+    {
+      "source": "ticket_replication",
+      "type": "ASSIGNED_TO",
+      "target": "person_carol"
+    },
+    {
+      "source": "ticket_launch",
+      "type": "BLOCKS",
+      "target": "project_payments"
+    },
+    {
+      "source": "ticket_launch",
+      "type": "ABOUT",
+      "target": "sys_database"
+    },
+    {
+      "source": "ticket_launch",
+      "type": "ASSIGNED_TO",
+      "target": "person_alice"
+    },
+    {
+      "source": "incident_114",
+      "type": "AFFECTS",
+      "target": "sys_database"
+    },
+    {
+      "source": "incident_114",
+      "type": "AFFECTS",
+      "target": "sys_gateway"
+    },
+    {
+      "source": "incident_114",
+      "type": "RESOLVED_BY",
+      "target": "person_alice"
+    },
+    {
+      "source": "message_replication",
+      "type": "DISCUSSES",
+      "target": "ticket_replication"
+    },
+    {
+      "source": "meeting_planning",
+      "type": "DISCUSSES",
+      "target": "project_analytics"
+    },
+    {
+      "source": "decision_delay",
+      "type": "IMPACTS",
+      "target": "project_analytics"
+    },
+    {
+      "source": "decision_delay",
+      "type": "MADE_BY",
+      "target": "person_david"
+    },
+    {
+      "source": "decision_delay",
+      "type": "BASED_ON",
+      "target": "ticket_replication"
+    },
+    {
+      "source": "decision_delay",
+      "type": "BASED_ON",
+      "target": "message_replication"
+    },
+    {
+      "source": "decision_delay",
+      "type": "BASED_ON",
+      "target": "meeting_planning"
+    },
+    {
+      "source": "decision_delay",
+      "type": "BASED_ON",
+      "target": "doc_analytics"
+    }
+  ]
+}
