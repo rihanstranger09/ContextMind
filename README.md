@@ -7,9 +7,26 @@
 
 ContextMind connects a fictional fintech company’s people, teams, projects, systems, documents, tickets, chats, incidents, meetings, and decisions. Ask what breaks when a service fails, who can help, or why a migration was delayed. Inspect the actual relationships behind each claim.
 
+## New: FalkorDB public-data workspace
+
+Use the dashboard workspace selector to switch between **NovaPay (fictional sandbox)** and **FalkorDB (real public GitHub snapshot)**. Open `/dashboard?workspace=falkordb` or `/demo.html?workspace=falkordb` for the builder walkthrough.
+
+The committed snapshot contains **149 public repositories**, with bounded docs, README, release, issue/PR, and contributor samples for ten repositories: **332 nodes and 378 provenance-bearing edges**. All source URLs are real; docs/README citations are commit-pinned. No example versions, fabricated rationale, or maintenance inferred from commit counts were seeded.
+
+Try Python getting-started, LangChain integration, public contributor evidence, or recent release notes. Unsupported financial, private-roadmap, rationale, and compatibility questions explicitly report missing evidence. This is a **snapshot**, not a live feed; backend storage mode is separately labeled.
+
+**[Full scope, collection/replay commands, privacy removal, freshness, and limitations →](docs/falkordb-public-data.md)**
+
+```sh
+python -m connectors.collect --org falkordb --source github  # optional, real API capture
+python data/seed.py --org falkordb                           # offline snapshot replay
+```
+
+The website, partner sites, YouTube, Discussions, and Discord are **not collected**. No ten-decision or full integration-coverage claim is made. Maintainer outreach is a [draft only](docs/maintainer-outreach.md).
+
 ## Demo and submission status
 
-- **Quick-test guide:** [`/demo.html`](frontend/demo.html), served by the running app.
+- **Quick-test guide:** [`/demo.html`](frontend/demo.html), served by the running app; append `?workspace=falkordb` for the public walkthrough.
 - **Dashboard:** `/dashboard` (also available at `/`).
 - **Health:** `/api/health` checks that the graph can read the seeded Database Cluster. Returns HTTP 200 with `status: healthy`, `version: 1.0.0-mvp`, actual `graph_mode`, and `sample_data: NovaPay`; HTTP 503 if the graph read fails. Existing `backend` and `company` fields remain compatible with the dashboard.
 - **Repository:** [rihanstranger09/ContextMind](https://github.com/rihanstranger09/ContextMind), verified public.
@@ -106,6 +123,8 @@ FalkorDB: typed entities and typed relationships
 
 - **`graph/store.py`**: parameterized FalkorDB storage plus an explicit JSON demo adapter. Entities have `:Entity` and their domain label (`:System`, `:Person`, etc.). Edges use native domain relationship types (`DEPENDS_ON`, `USES`, etc.). Node payloads preserve source metadata; `id`, `name`, `updated_at`, and `kind` are also directly queryable properties.
 - **`graph/tools.py`**: entity resolution, direct/team-lead ownership, expert ranking, reverse dependency traversal, decision evidence, blockers, knowledge gaps, and evidence retrieval. Impact analysis includes directly used systems and indirect dependencies up to five hops, with cycle protection. Visualization neighborhoods are capped at 70 nodes and depth 3.
+- **`agents/public_brain.py`**: conservative public-workspace retrieval, source excerpts, artifact/activity queries, and missing-evidence controls. No personal rankings.
+- **`connectors/`**: bounded public GitHub capture, offline-ready snapshot, explicit full-refresh watcher, and snapshot Person removal.
 - **`agents/company_brain.py`**: routes supported questions, assembles only relevant facts/evidence, exposes auditable retrieval paths, and stores the answer trace. Unknown entities produce an explicit insufficient-context response.
 - **`app/main.py`**: validated HTTP API, write token checks, static frontend.
 - **`data/sample_company.json`**: fictional NovaPay company graph; regenerate with `python data/generate.py`.
@@ -163,19 +182,19 @@ pytest -q
 node --check frontend/app.js
 ```
 
-Tests cover alias resolution, direct/multi-hop impact, indirect expertise, citations/decision traces, missing context, gaps, idempotent persistence, blocker resolution, and API/write validation. They use the JSON test adapter. Docker/FalkorDB integration must be verified separately in a Docker-capable environment.
+Tests additionally cover the 25-question public-data evaluation set, provenance integrity, workspace isolation, replay idempotency, and Person suppression. Original tests cover alias resolution, direct/multi-hop impact, indirect expertise, citations/decision traces, missing context, gaps, idempotent persistence, blocker resolution, and API/write validation. Offline tests use the JSON adapter. An opt-in native FalkorDB integration test and CI service job are provided; their results must be verified separately from local offline tests.
 
 ## Scope and limitations
 
 This is a runnable hackathon foundation, **not a production knowledge/security platform**:
 
-- Real Slack/Jira/Notion/GitHub connectors, extraction pipelines, scheduled synchronization, and deletion reconciliation are not implemented. Ingestion accepts normalized manual records.
+- Slack/Jira/Notion connectors are not implemented. The FalkorDB public workspace has a bounded GitHub snapshot connector and opt-in full refresh, not comprehensive incremental synchronization. NovaPay ingestion accepts normalized manual records.
 - No authentication, per-user ACLs, tenant isolation, rate limits, or audit retention policy. `user_id` is not an authorization boundary. Use only fictional/sanitized data.
-- Bounded entity matching uses IDs/names/aliases, not vector search or an ambiguity-confirmation dialogue. It selects the longest known name; broad unknown queries return insufficient context.
+- Entity matching uses IDs/names/aliases, not vector search or an ambiguity-confirmation dialogue. The public workspace retrieves attributed excerpts using deterministic term matches; it does not establish all organizational meaning from arbitrary questions.
 - Missing-owner detection reflects absence of recorded ownership, not a verified lack of a real-world owner. No employee-active-state checks yet.
 - Source cards mark records older than 90 days. Staleness does not automatically invalidate a source. No stale-doc risk scoring yet.
 - Expert scores do not model current workload or recent activity. No automated paging or work assignment.
-- Graph tools issue parameterized adjacency queries and traverse in Python. This MVP is not optimized for large graphs; entity search is bounded to 100 results, adjacency reads to 300, and trace pagination is not implemented.
+- Graph tools issue parameterized adjacency queries and traverse in Python. This MVP is not optimized for large graphs; entity search is bounded to 100 results for NovaPay / 2,000 for the public workspace, adjacency reads to 500, and trace pagination is not implemented.
 - Cross-record FalkorDB writes are not transactional; concurrent ingestion conflict control and migrations remain future work. Run one API worker for the JSON demo backend.
 - The UI is an interactive SVG explorer with focus and zoom, not a force-directed editor. No live ingestion UI or video asset is included.
 
