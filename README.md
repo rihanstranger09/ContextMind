@@ -199,3 +199,7 @@ This is a runnable hackathon foundation, **not a production knowledge/security p
 - The UI is an interactive SVG explorer with focus and zoom, not a force-directed editor. No live ingestion UI or video asset is included.
 
 **FalkorDB is the company graph, evidence store, and answer-trace memory in database mode. Every supported factual answer is built from graph relationships that can be inspected.**
+
+### Browser checklist
+
+A repeatable Playwright/Chromium suite now covers the dashboard in both workspaces, workspace switching, typed queries, Send/Enter, graph rendering, sources/traces, every demo question, mobile layout interaction, and console/network failures. See the [run instructions](tests/browser/README.md) and [verified checklist and scope](docs/testing-checklist.md). Browser artifacts remain in ignored `.runtime/browser-results/`.
