@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 .runtime/
 node_modules/
+
+deliverables/

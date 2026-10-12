@@ -26,3 +26,7 @@ The Python regression suite also passed: **55 passed, 1 skipped**. The skipped t
 ## Boundaries
 
 These results apply to the local app and demo-storage backend, not to an untested Railway URL, the external Arena proxy, other browser engines, production security, or native FalkorDB database operations. CORS is unnecessary for this app's relative same-origin API URLs; this check does not claim that arbitrary third-party origins are allowed. No production CORS policy was relaxed.
+
+## Later native-backend verification
+
+During video preparation on the same date, the app was also tested against an actual local FalkorDB 4.16.3 instance. The full Python run passed all 56 tests, and all 22 browser checks passed at port 8001. See [native recording validation](native-recording-validation.md) for the environment, fixes, and limitations. This later run does not retroactively change the demo-storage scope of the original checklist above.

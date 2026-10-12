@@ -30,7 +30,8 @@ class PublicAgent:
 
         def related_path(n):
             es=self.s.adjacent(n['id'])
-            primary=next(([e] for e in es if e['type'] in ('ABOUT','IN_REPO','VERSION','OWNS','PUBLISHES')),[])
+            priority={'ABOUT':0,'IN_REPO':1,'VERSION':2,'OWNS':3,'PUBLISHES':4}
+            primary=next(([e] for e in sorted(es,key=lambda e:priority.get(e['type'],99)) if e['type'] in priority),[])
             topic=next(([e] for e in es if e['type']=='DOCUMENTS' and tokens(self.s.get(e['target'])['name']) & tokens(q)),[])
             return topic+primary
 

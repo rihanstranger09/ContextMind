@@ -15,7 +15,10 @@ def test_native_graph_provenance_replay_and_privacy(monkeypatch):
         assert s.query('MATCH (o:Organization)-[:OWNS]->(r:Repository) RETURN count(r)')[0][0]>100
         r=PublicAgent(s).ask('How do I use FalkorDB with LangChain?')
         assert r['facts'] and r['sources']
+        assert r['resolved_entities'][0]['id'] in {n['id'] for n in r['graph']['nodes']}
         assert all(e.get('content_hash') for p in r['graph_trace'] for e in p['edges'])
+        reopened=Store('falkordb',workspace='falkordb')
+        assert reopened.get('org_falkordb')['name']=='FalkorDB'
         before=s.query('MATCH (n:Entity) RETURN count(n)')[0][0]
         replay(s,PUBLIC_SEED)
         assert s.query('MATCH (n:Entity) RETURN count(n)')[0][0]==before

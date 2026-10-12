@@ -24,7 +24,12 @@ class Store:
             graph_name = os.getenv('FALKOR_GRAPH','contextmind') + ('_public_falkordb' if workspace=='falkordb' else '')
             self.db = FalkorDB(host=os.getenv('FALKOR_HOST','localhost'),port=int(os.getenv('FALKOR_PORT','6379')),
                                socket_timeout=10, socket_connect_timeout=5).select_graph(graph_name)
-            self.db.query('CREATE INDEX ON :Entity(id)')
+            from redis.exceptions import ResponseError
+            try:
+                self.db.query('CREATE INDEX ON :Entity(id)')
+            except ResponseError as error:
+                if str(error) != "Attribute 'id' is already indexed":
+                    raise
             if not self.db.query('MATCH (n:Entity) RETURN n.id LIMIT 1').result_set: self.seed()
         elif self.backend == 'demo':
             raw=json.loads((self.path if self.path.exists() else self.seed_path).read_text())
@@ -61,7 +66,7 @@ class Store:
             return [n for n in self.nodes.values() if n['type']!='AgentDecision' and
                     (not type or n['type']==type) and
                     (not text or text in json.dumps([n['id'],n['name'],n.get('aliases',[])]).lower())][:limit]
-        rows=self.query('MATCH (n:Entity) WHERE n.kind <> "AgentDecision" AND ($kind = "" OR n.kind = $kind) AND contains(n.search,$text) RETURN n.payload LIMIT $limit',kind=type or '',text=text,limit=limit)
+        rows=self.query('MATCH (n:Entity) WHERE n.kind <> "AgentDecision" AND ($kind = "" OR n.kind = $kind) AND n.search CONTAINS $text RETURN n.payload LIMIT $limit',kind=type or '',text=text,limit=limit)
         return [json.loads(r[0]) for r in rows]
 
     def adjacent(self,id):
