@@ -1,0 +1,22 @@
+services:
+  falkordb:
+    image: falkordb/falkordb:v4.12.0
+    volumes:
+      - graph_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      GRAPH_BACKEND: falkordb
+      FALKOR_HOST: falkordb
+      INGEST_TOKEN: ${INGEST_TOKEN:-local-demo-token}
+    depends_on:
+      falkordb:
+        condition: service_healthy
+volumes:
+  graph_data:
