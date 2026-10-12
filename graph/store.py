@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from threading import RLock
 from graph.schema import NODE_TYPES, REL_TYPES
+from graph.connection import connection_options
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED = ROOT / 'data/sample_company.json'
@@ -22,8 +23,7 @@ class Store:
         if self.backend == 'falkordb':
             from falkordb import FalkorDB
             graph_name = os.getenv('FALKOR_GRAPH','contextmind') + ('_public_falkordb' if workspace=='falkordb' else '')
-            self.db = FalkorDB(host=os.getenv('FALKOR_HOST','localhost'),port=int(os.getenv('FALKOR_PORT','6379')),
-                               socket_timeout=10, socket_connect_timeout=5).select_graph(graph_name)
+            self.db = FalkorDB(**connection_options()).select_graph(graph_name)
             from redis.exceptions import ResponseError
             try:
                 self.db.query('CREATE INDEX ON :Entity(id)')

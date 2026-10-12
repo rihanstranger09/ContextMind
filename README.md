@@ -37,10 +37,10 @@ The dashboard’s **Demo guide** link opens instructions for testing chat, graph
 
 ## Railway deployment
 
-1. In Railway, create a project from this GitHub repository. Select branch **`arena/10eeec69-contextmind`**, which contains this implementation. No changes have been made to `main`.
+1. In Railway, create a project from this GitHub repository. Deploy `main` after merging the cloud-connection PR, or select **`arena/bac5286a-contextmind`** to test it before merge.
 2. Railway can use the included `Dockerfile` and `railway.json`. The container listens on `0.0.0.0:$PORT` (8000 locally); `/api/health` is the deployment health check.
 3. For a quick **fictional-data-only** demo, set `GRAPH_BACKEND=demo`. Leave `INGEST_TOKEN` unset to disable ingestion. Keep one instance/worker. Without a persistent volume, runtime demo updates and answer traces are lost on redeployment; for persistence, mount a volume at `/app/.runtime`.
-4. For FalkorDB mode, provision a reachable FalkorDB service separately and set `GRAPH_BACKEND=falkordb`, `FALKOR_HOST`, `FALKOR_PORT`, and `FALKOR_GRAPH`. Railway does not deploy the local Compose stack automatically. This adapter assumes a trusted private network without database password/TLS configuration; do not expose the database port publicly.
+4. For FalkorDB mode, provision a reachable FalkorDB service separately and set `GRAPH_BACKEND=falkordb`, `FALKOR_HOST`, `FALKOR_PORT`, `FALKOR_USERNAME`, `FALKOR_PASSWORD`, `FALKOR_SSL=true`, and a dedicated `FALKOR_GRAPH` in Railway **secret variables** (or use `FALKOR_URL=rediss://...` instead of the individual connection settings). Railway does not deploy the local Compose stack automatically. Use the provider's Redis-protocol endpoint, not its web console URL; TLS certificate and hostname verification stay enabled. See [cloud connection setup](#cloud-falkordb-connection).
 5. Generate a public domain in Railway’s networking settings. Open `/demo.html`, confirm health, and submit each suggested question. Check chat facts, graph nodes, source excerpts, and the expandable trace.
 6. Add the **real, verified URL** to this README, and only then change the badge to “Deployed on Railway” linked to that URL.
 
@@ -87,6 +87,34 @@ GRAPH_BACKEND=demo uvicorn app.main:app --host 0.0.0.0 --port 8000
 Demo mode is explicitly labeled. It uses the same graph tools with a local JSON adapter, persists updates and traces to ignored `.runtime/demo.json`, and needs no credentials or external services. Delete that file to reset demo data. The `.env.example` documents configuration; local shell variables must be exported (the app does not automatically load `.env`).
 
 To connect locally to an existing FalkorDB instance, set `GRAPH_BACKEND=falkordb`, `FALKOR_HOST`, `FALKOR_PORT`, and optionally `FALKOR_GRAPH` (default `contextmind`).
+
+### Cloud FalkorDB connection
+
+Use the cloud provider's **Redis-protocol host and port**. Configure either individual variables:
+
+```sh
+GRAPH_BACKEND=falkordb
+FALKOR_HOST=your-redis-endpoint.example
+FALKOR_PORT=6379
+FALKOR_USERNAME=default
+FALKOR_PASSWORD=your-password
+FALKOR_SSL=true
+FALKOR_GRAPH=contextmind_cloud
+```
+
+Or set `GRAPH_BACKEND=falkordb`, `FALKOR_GRAPH=contextmind_cloud`, and **only** `FALKOR_URL=rediss://USER:PASSWORD@HOST:PORT/0` for the connection. URL-encode special characters in URI credentials. `rediss://` enables TLS; certificate verification and hostname verification are required. If the provider uses a private CA, set `FALKOR_CA_CERTS` to a mounted PEM CA file (do not disable TLS verification). Passwordless `redis://` and `FALKOR_SSL=false` are for trusted private/local networks only. Both workspaces are stored in separate graph names: `FALKOR_GRAPH` (fictional NovaPay) and `FALKOR_GRAPH_public_falkordb` (public snapshot). **Startup automatically seeds empty graphs**; choose a fresh dedicated graph prefix and ensure the account permits graph writes. The chat API also persists answer traces. Do not connect this unauthenticated prototype to sensitive production graphs or expose it publicly without access controls.
+
+For local testing, place shell-compatible assignments in an ignored `.env.txt`, then load them into the shell before starting the app:
+
+```sh
+set -a; . ./.env.txt; set +a
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Check both workspaces:
+curl http://localhost:8000/api/health
+curl 'http://localhost:8000/api/health?workspace=falkordb'
+```
+
+Quote values containing shell metacharacters in `.env.txt`. The app does **not** auto-load env files. `.env.txt` and `.env` are excluded from Git and Docker builds; never add secrets to a PR, logs, or `.env.example`. In Railway, configure secret variables instead of uploading `.env.txt`. If the service is unreachable, startup fails instead of silently falling back to demo data.
 
 ## Demo in two minutes
 
