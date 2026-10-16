@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel,Field
 from graph.store import Store
 from graph.tools import Tools
-from graph.showcase import graph_showcase
+from graph.showcase import graph_showcase, company_showcase
 from agents.company_brain import Agent
 from agents.public_brain import PublicAgent
 
@@ -69,6 +69,10 @@ def dashboard():
 def entities(q:str='',type:str|None=None,workspace:Workspace='novapay'): return store(workspace).search(q,type)
 @app.get('/api/entities/{id}')
 def entity(id:str,workspace:Workspace='novapay'): return require_entity(id,workspace)
+@app.get('/api/investigations')
+def investigations(limit:int=Query(10,ge=1,le=20),workspace:Workspace='novapay'):
+    if workspace!='novapay': return []
+    return [dict(id=n['id'],question=n['question'],intent=n.get('intent','knowledge'),updated_at=n['updated_at']) for n in store().recent_investigations(limit)]
 @app.post('/api/chat')
 def chat(body:Question,workspace:Workspace='novapay'): return brain(workspace).ask(body.question)
 @app.post('/api/impact')
@@ -87,6 +91,11 @@ def decision(id:str,workspace:Workspace='novapay'): require_entity(id,workspace)
 def showcase(workspace:Workspace='falkordb'):
     if workspace != 'falkordb': raise HTTPException(422,'Graph proof uses the public FalkorDB snapshot')
     return graph_showcase(store(workspace))
+
+@app.get('/api/graph/company-proof')
+def company_proof(workspace:Workspace='novapay'):
+    if workspace!='novapay': raise HTTPException(422,'Decision proof uses the fictional company graph')
+    return company_showcase(store(workspace))
 
 @app.get('/api/graph/subgraph')
 def subgraph(entity_id:str|None=None,depth:int=Query(2,ge=0,le=3),workspace:Workspace='novapay'):

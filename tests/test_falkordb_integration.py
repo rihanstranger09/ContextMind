@@ -5,14 +5,18 @@ import pytest
 from graph.store import Store, PUBLIC_SEED
 from graph.ingestion import replay
 from agents.public_brain import PublicAgent
-from graph.showcase import graph_showcase
+from graph.showcase import graph_showcase, company_showcase
 
 pytestmark=pytest.mark.skipif(os.getenv('FALKOR_INTEGRATION')!='1',reason='Requires a real FalkorDB service')
 
 def test_native_graph_provenance_replay_and_privacy(monkeypatch):
     monkeypatch.setenv('FALKOR_GRAPH','contextmind_test_'+uuid4().hex)
     s=Store('falkordb',workspace='falkordb')
+    c=Store('falkordb',workspace='novapay')
     try:
+        decision_proof=company_showcase(c)
+        assert decision_proof['native_cypher_executed']
+        assert {n['type'] for n in decision_proof['evidence']}=={'Ticket','Message','Meeting','Document'}
         assert s.query('MATCH (o:Organization)-[:OWNS]->(r:Repository) RETURN count(r)')[0][0]>100
         proof=graph_showcase(s)
         assert proof['backend']=='falkordb' and proof['native_cypher_executed']
@@ -35,3 +39,4 @@ def test_native_graph_provenance_replay_and_privacy(monkeypatch):
         assert s.is_suppressed(person['id'])
     finally:
         s.db.delete()
+        c.db.delete()

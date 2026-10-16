@@ -22,7 +22,8 @@ if(isPublic){
   $('.bottom-strip button').onclick=showCoverage;
   $('footer>span').textContent='FalkorDB · Public artifacts · Snapshot, not live';
   $('.nav[data-page="risks"]').innerHTML='<span>◈</span> Data coverage';
-  $('.nav[data-page="decisions"] i').textContent='0';
+  // No hand-verified public decisions exist in this snapshot; do not imply otherwise.
+  $('.nav[data-page="decisions"]').remove();
   $('.graph-toolbar>span').textContent='Public snapshot explorer';
   $('.legend').innerHTML='<span><i style="background:#997acb"></i>Repository</span><span><i style="background:#7a9bd3"></i>Topic</span><span><i style="background:#d0a264"></i>Contributor</span><span><i style="background:#73ad9d"></i>Evidence</span>';
   $('.metrics>div:nth-child(2) div>span').textContent='Visible graph relationships';
@@ -30,14 +31,19 @@ if(isPublic){
   $('.demo-badge').href='/demo.html?workspace=falkordb';
   $('#graph-proof').hidden=false;
 }
+if(!isPublic)$('#graph-proof').textContent='◈ DECISION CYPHER';
 $('#workspace-select').value=workspace;
 $('#workspace-select').onchange=e=>{location.href='/dashboard?workspace='+e.target.value};
 let entities=[],current=rootEntity,graphData=null,zoom=1,busy=false; const welcome=$('#conversation').innerHTML;
 async function api(path,body){path+=(path.includes('?')?'&':'?')+'workspace='+workspace;const r=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});if(!r.ok){let e=await r.json().catch(()=>({detail:'Request failed'}));throw new Error(typeof e.detail==='string'?e.detail:'Please check your request.')}return r.json()}
 function modal(title,html){$('#modal-title').textContent=title;$('#modal-content').innerHTML=html;$('#modal').showModal()}
 $('#close-modal').onclick=()=>$('#modal').close();$('#modal').onclick=e=>{if(e.target===$('#modal'))$('#modal').close()};
+$('#graph-model').onclick=()=>modal('Graph model · '+(isPublic?'public artifact snapshot':'fictional company brain'),isPublic
+  ? '<p>Real public GitHub artifacts, captured at a point in time. No internal decisions, private data or inferred maintainer assignments.</p><pre>Organization ─OWNS→ Repository ─VERSION→ Version\nPerson ─CONTRIBUTES_TO→ Repository ←ABOUT─ Guide / Document\nTicket ─IN_REPO→ Repository\nGuide ─DOCUMENTS→ Integration / Skill</pre><p>Public source nodes and edges carry GitHub URLs, collection time, integrity hash and inference labels.</p>'
+  : '<p><strong>NovaPay is fictional.</strong> These typed relationships power ownership, decision provenance, impact analysis and evidence memory.</p><pre>Person ─MEMBER_OF→ Team ─OWNS→ System\nSystem ─DEPENDS_ON→ System ←USES─ Project\nTicket ─BLOCKS→ Project ←IMPACTS─ Decision\nDecision ─BASED_ON→ Ticket / Message / Meeting / Document\nSaved investigation ─USED_EVIDENCE→ sources</pre><p>Native FalkorDB stores typed nodes and edges. The agent routes supported questions to bounded graph tools and saves answer traces.</p>');
 // This is a fixed, read-only query. Never accept Cypher or graph names from the browser.
 $('#graph-proof').onclick=async()=>{
+  if(!isPublic)return showCompanyProof();
   modal('FalkorDB · the graph is the engine','<p>Reading the graph…</p>');
   try{
     const proof=await api('/api/graph/showcase');
@@ -56,6 +62,16 @@ $('#graph-proof').onclick=async()=>{
       <p class="proof-foot">${native?'Server-side proof: '+esc(proof.elapsed_ms)+' ms. This is not a benchmark.':'The Cypher above is illustrative until native mode is enabled.'} Public GitHub snapshot; not a live feed.</p>`;
   }catch(e){$('#modal-content').innerHTML='<p class="error">Graph proof unavailable: '+esc(e.message)+'</p>'}
 };
+async function showCompanyProof(){
+  modal('Decision provenance · native graph','<p>Reading the decision graph…</p>');
+  try{const p=await api('/api/graph/company-proof');
+    $('#modal-content').innerHTML=`<div class="proof-state ${p.native_cypher_executed?'native':'preview'}">${p.native_cypher_executed?'● NATIVE FALKORDB · SECOND CYPHER QUERY EXECUTED':'○ JSON PREVIEW · CYPHER NOT EXECUTED'}</div>
+      <p><strong>${esc(p.decision)}</strong> impacts ${esc(p.project)}. The rationale is backed by four linked records across tickets, chat, meeting and documentation. NovaPay and its data are fictional.</p>
+      <h3>Decision → evidence and impacted project</h3><pre class="proof-query">${esc(p.cypher)}</pre>
+      <div class="proof-path">${p.evidence.map(e=>`<div>BASED_ON → <strong>${esc(e.name)}</strong> · ${esc(e.type)}${e.status?' · '+esc(e.status):''}</div>`).join('')}</div>
+      <p class="proof-foot">This is a fixed read-only query. Inspect the answer trace for more relationship context; no unsupported public FalkorDB decisions are inferred.</p>`;
+  }catch(e){$('#modal-content').innerHTML='<p class="error">Decision proof unavailable: '+esc(e.message)+'</p>'}
+}
 const colors={Repository:'#997acb',Organization:'#b28ccc',Version:'#73ad9d',Guide:'#73ad9d',Integration:'#7a9bd3',System:'#997acb',Project:'#7a9bd3',Person:'#d0a264',Team:'#d0a264',Document:'#73ad9d',Ticket:'#73ad9d',Message:'#73ad9d',Meeting:'#73ad9d',Decision:'#b28ccc',Incident:'#c9a170'};
 function draw(data){graphData=data;const nodes=data.nodes.filter(n=>n&&n.type!=='AgentDecision');let visible=nodes.filter(n=>n.id===current||['System','Project','Person','Team','Repository','Organization','Integration'].includes(n.type));if(visible.length<6)visible=nodes;visible=visible.slice(0,17);if(!visible.some(n=>n.id===current)&&nodes.some(n=>n.id===current))visible=[nodes.find(n=>n.id===current),...visible.slice(0,16)];
 const center=visible.find(n=>n.id===current)||visible[0];const outer=visible.filter(n=>n!==center);const pos={};if(center)pos[center.id]=[310,207];outer.forEach((n,i)=>{let a=-Math.PI/2+i*2*Math.PI/outer.length;pos[n.id]=[310+Math.cos(a)*(i%2?234:192),207+Math.sin(a)*(i%2?153:150)]});
@@ -73,12 +89,29 @@ if(r.notices?.length)html+=`<div class="public-notice">${r.notices.map(n=>`<p>${
 if(r.recommended_actions.length)html+=`<div class="answer-section-title">RECOMMENDED ACTION</div><p class="fact">${esc(r.recommended_actions.join(' '))}</p>`;
 if(r.sources.length)html+=`<div class="answer-section-title">CONNECTED SOURCES · ${r.sources.length}</div><div class="source-grid">${r.sources.map((s,i)=>`<button class="source-card" data-source="${i}"><span style="color:#9b80bc">▤</span> ${esc(s.name)}<small>${esc(s.type)} · ${esc(s.updated_at?.slice(0,10))}${s.method?' · '+esc(s.method):''}${s.inferred?' · INFERRED':''}${r.freshness.stale_sources.includes(s.id)?' · STALE':''}</small></button>`).join('')}</div>`;
 if(r.graph_trace.length)html+=`<details><summary>Why this answer? · ${r.graph_trace.length} graph paths</summary><ol>${r.graph_trace.map(p=>`<li>${esc(p.label)}</li>`).join('')}</ol></details>`;
+if(r.tool_steps?.length)html+=`<details class="tool-steps"><summary>Tools used · ${r.tool_steps.length} recorded steps</summary><ol>${r.tool_steps.map(s=>`<li><strong>${esc(s.tool)}</strong>${s.focus?' · '+esc(s.focus):''} · ${esc(s.results)} results</li>`).join('')}</ol><p>Rule-based tool routing, not autonomous planning or hidden model reasoning.</p></details>`;
 html+=`<p style="font-size:8px;color:#afa0bb;line-height:1.7">${isPublic?'Public GitHub snapshot · No private data · No personal performance ranking.':'Fictional NovaPay data · Graph-derived answer · Verify operational availability before acting.'}</p>`;$('#conversation').innerHTML=html;
 $('#conversation').querySelectorAll('[data-trace]').forEach(b=>b.onclick=()=>{let t=r.graph_trace[+b.dataset.trace];modal('Evidence path',`<p>${esc(t.label)}</p><p>These stored graph relationships support this claim. This is an auditable retrieval trace, not hidden model reasoning.</p><pre>${esc(JSON.stringify(t.edges,null,2))}</pre>`)});
 $('#conversation').querySelectorAll('[data-inspect]').forEach(b=>b.onclick=()=>selectNode(b.dataset.inspect));$('#conversation').querySelectorAll('[data-source]').forEach(b=>b.onclick=()=>showSource(r.sources[+b.dataset.source]));
 if(r.graph.nodes.length){current=r.resolved_entities[0]?.id||r.graph.nodes[0].id;await selectNode(current,false);draw(r.graph);$('#graph-focus').textContent='Answer evidence ⌄'}
-$('#history .history-empty')?.remove();const h=document.createElement('button');h.textContent='◷ '+question;h.onclick=()=>ask(question);$('#history').prepend(h);while($('#history').children.length>5)$('#history').lastChild.remove();
+if(!isPublic)await loadHistory();
 }catch(e){$('#conversation').innerHTML+=`<div class="error">${esc(e.message)}. Please try again.</div>`;$('.loading')?.remove()}finally{busy=false;$('#send').disabled=false}}
+async function loadHistory(){
+  if(isPublic){$('.recent-label')?.remove();$('#history')?.remove();return}
+  const records=await api('/api/investigations?limit=8');
+  $('#history').replaceChildren();
+  if(!records.length){$('#history').innerHTML='<p class="muted history-empty">No saved investigations yet.</p>';return}
+  for(const item of records){
+    const button=document.createElement('button');button.textContent='◷ '+item.question;
+    button.title='Saved '+item.updated_at.slice(0,16)+' · Click to inspect stored graph memory';
+    button.onclick=async()=>{
+      try{const n=await api('/api/entities/'+encodeURIComponent(item.id));
+        modal('Stored investigation',`<p><strong>${esc(n.question)}</strong> · ${esc(n.updated_at.slice(0,16))}</p><p>${esc(n.answer)}</p><ol>${(n.facts||[]).map(f=>`<li>${esc(f.text)}</li>`).join('')}</ol><h3>Persisted tool and evidence trace</h3><pre>${esc((n.tool_steps||[]).map(s=>s.tool+' → '+s.results+' results').join('\n'))}</pre><ol>${(n.graph_trace||[]).map(p=>`<li>${esc(p.label)}</li>`).join('')}</ol><p>Saved to this workspace graph. Re-run the question to see current data.</p>`)
+      }catch(e){modal('Memory unavailable',esc(e.message))}
+    };
+    $('#history').append(button)
+  }
+}
 function sourceLink(url){try{const u=new URL(url);return u.protocol==='https:'&&u.hostname==='github.com'?`<a href="${esc(u.href)}" target="_blank" rel="noopener noreferrer">Open original source ↗</a>`:''}catch{return ''}}
 function showSource(s){modal(s.name,`<span class="citation">${esc(s.type)} · Updated ${esc(s.updated_at?.slice(0,10))}</span><pre>${esc(s.content||s.rationale||'Public activity record; see its source link.')}</pre>${isPublic?`${sourceLink(s.source_url||s.url)} ${s.activity_source_url?sourceLink(s.activity_source_url):''}<p>Source system: ${esc(s.source_system)} · Method: ${esc(s.method)}<br>Collected: ${esc(s.collected_at)}<br>Inferred: ${esc(s.inferred)} ${esc(s.inferred_reason||'')}<br>${esc(s.updated_at_basis||'')}</p><p style="overflow-wrap:anywhere">${esc(s.content_hash)}</p>`:s.url?`<p>Original source (fictional demo URL):<br><code>${esc(s.url)}</code></p>`:''}<p>Source ID: ${esc(s.id)}</p>`)}
 async function showCoverage(){try{const data=await api('/api/coverage');modal('FalkorDB · Data coverage',`<p>This is the shipped public snapshot. Source cards report their own capture dates. A missing source means it was not collected—not necessarily that it is private or does not exist.</p><pre>${esc(JSON.stringify(data,null,2))}</pre><p>No automated watcher is started with the app. See the repository’s public-data guide for opt-in refresh and deletion instructions.</p>`)}catch(e){modal('Coverage unavailable',esc(e.message))}}
@@ -91,7 +124,7 @@ $('.sidebar nav').onclick=async e=>{let b=e.target.closest('[data-page]');if(!b)
   $('#backend').textContent=(health.backend==='demo'?'JSON storage':'FalkorDB storage')+(isPublic?' · Public snapshot':' · Fictional demo');
   entities=await api('/api/entities');$('#entity-count').textContent=entities.length;
   const g=await api('/api/graph/subgraph?entity_id='+rootEntity+'&depth=2');
-  $('#link-count').textContent=g.edges.length;draw(g);await selectNode(rootEntity,false);
+  $('#link-count').textContent=g.edges.length;draw(g);await selectNode(rootEntity,false);await loadHistory();
 }catch(e){$('#backend').textContent='Graph connection unavailable';modal('Connection error',esc(e.message))}})();
 if(isPublic)$('#help').onclick=()=>modal('FalkorDB public brain','<p>Explore a bounded snapshot of public FalkorDB GitHub repositories, selected docs, releases, issues, and contributors. It is not a live feed and contains no internal company context.</p><p>Source excerpts are attributed, not independently verified. Contribution counts are not maintainer status. No private data, financial claims, invented rationale, or compatibility promises.</p><p>Use Data coverage to inspect collection limits. Storage mode is shown separately from workspace identity.</p>');
 

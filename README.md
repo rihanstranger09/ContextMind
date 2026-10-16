@@ -19,7 +19,7 @@ Try Python getting-started, LangChain integration, public contributor evidence, 
 
 ### Show FalkorDB in the presentation
 
-Open `/demo.html?workspace=falkordb` for a timed native-database walkthrough, then click **FALKORDB PROOF** in the public dashboard. The fixed read-only `/api/graph/showcase?workspace=falkordb` endpoint runs a parameterized, two-hop Cypher traversal and graph counts **only in FalkorDB storage mode**; in JSON mode it is explicitly labeled a preview and **does not claim Cypher was executed**. It links the organization → Python client → releases to actual source URLs. See the [presenter runbook](docs/presenter-runbook.md) for a ~1:35 native recording, Indian English narration, captions, and recording checks. The [downloadable narrated MP4](presentation/ContextMind-FalkorDB-demo.mp4) is included for the presentation; the raw footage, voice clips and render intermediates remain ignored under `deliverables/`. This is a bounded public GitHub snapshot, not a live feed or a benchmark.
+The [downloadable 2:20 Company Brain video](presentation/ContextMind-FalkorDB-demo.mp4) starts with **fictional NovaPay**: a decision traced to ticket/chat/meeting/RFC evidence, recorded tool calls, ownership, answer memory after reload, and a token-protected fictional ticket update that changes the next answer. It then switches to the **real public FalkorDB GitHub snapshot** for a contributor question and release-source evidence. Both workspaces show different fixed, parameterized **native Cypher proofs**; JSON preview says **CYPHER NOT EXECUTED**. No public human maintainer or public organizational decision is invented. See the [presenter runbook](docs/presenter-runbook.md) for recording steps and cautions. The MP4 includes user-selected Indian English narration and captions; raw footage and voice clips remain ignored under `deliverables/`. No cloud deployment or live feed is claimed.
 
 ```sh
 python -m connectors.collect --org falkordb --source github  # optional, real API capture
@@ -52,8 +52,8 @@ Public hosting may incur charges. This prototype has no authentication or rate l
 
 ### Final submission checklist
 
-- [x] Implementation pushed to GitHub on `arena/10eeec69-contextmind`.
-- [ ] Select that branch for Railway deployment.
+- [x] Implementation pushed to GitHub on `arena/bac5286a-contextmind` (pull request #2 is open).
+- [ ] Merge this PR or select this branch for a Railway deployment; deployment has not been verified.
 - [ ] Deploy the app and test the public URL (including `/demo.html` and `/api/health`).
 - [ ] Add the verified public deployment link to this README and update the badge.
 - [x] Demo instructions visible from the dashboard.
@@ -140,6 +140,8 @@ Entity IDs are stable and discoverable at `/api/entities`; for example the datab
 
 ## Architecture
 
+**[Graph data model, all native Cypher queries and traversal algorithms →](docs/graph-model-and-queries.md)** · **[Submission checklist, setup, AI assistance and eligibility →](docs/submission-checklist.md)**. The selected track is **Company Brain**. The graph is the operational store in native mode, not merely the SVG view.
+
 ```text
 Vanilla HTML/CSS/JS dashboard
         │ same-origin REST
@@ -161,7 +163,7 @@ FalkorDB: typed entities and typed relationships
 - **`app/main.py`**: validated HTTP API, write token checks, static frontend.
 - **`data/sample_company.json`**: fictional NovaPay company graph; regenerate with `python data/generate.py`.
 
-**No LLM is wired in yet.** Answer synthesis is deterministic and supported intents are keyword-based. The frontend shows evidence paths, not hidden chain-of-thought. This makes the demo reproducible and avoids fabricated company facts. The tools operate through FalkorDB reads in database mode; the graph is not merely a visualization layer. An LLM integration should receive only these bounded facts, excerpts, and paths, never the entire graph or permission to execute arbitrary Cypher.
+**No LLM is wired in yet.** Answer synthesis is deterministic and supported intents are keyword-based. The Tools used panel shows actual rule-selected graph tools, not an autonomous planner. AI coding assistants helped build and test this repository and generate the demonstration narration; see [AI disclosure and eligibility checklist](docs/submission-checklist.md). The frontend shows evidence paths, not hidden chain-of-thought. This makes the demo reproducible and avoids fabricated company facts. The tools operate through FalkorDB reads in database mode; the graph is not merely a visualization layer. An LLM integration should receive only these bounded facts, excerpts, and paths, never the entire graph or permission to execute arbitrary Cypher.
 
 ### Expertise scoring
 
@@ -180,6 +182,9 @@ Interactive OpenAPI documentation: **`/docs`**.
 | POST | `/api/impact` | `{ "system_id": "sys_database" }` |
 | GET | `/api/experts/{id}` | Ranked experts with paths |
 | GET | `/api/decisions/{id}/trace` | Decision relationships |
+| GET | `/api/investigations?workspace=novapay` | Bounded saved answer/tool-trace memory (fictional workspace) |
+| GET | `/api/graph/showcase?workspace=falkordb` | Fixed public proof; Cypher executes only in native mode |
+| GET | `/api/graph/company-proof?workspace=novapay` | Fixed fictional decision proof; Cypher executes only in native mode |
 | GET | `/api/graph/subgraph?entity_id=sys_database&depth=2` | Bounded graph neighborhood |
 | GET | `/api/risks` | Critical systems missing ownership/docs |
 | POST | `/api/ingest/documents`, `/tickets`, `/messages` | Token-protected source upsert |
@@ -226,9 +231,9 @@ This is a runnable hackathon foundation, **not a production knowledge/security p
 - Missing-owner detection reflects absence of recorded ownership, not a verified lack of a real-world owner. No employee-active-state checks yet.
 - Source cards mark records older than 90 days. Staleness does not automatically invalidate a source. No stale-doc risk scoring yet.
 - Expert scores do not model current workload or recent activity. No automated paging or work assignment.
-- Graph tools issue parameterized adjacency queries and traverse in Python. This MVP is not optimized for large graphs; entity search is bounded to 100 results for NovaPay / 2,000 for the public workspace, adjacency reads to 500, and trace pagination is not implemented.
+- Graph tools issue parameterized adjacency queries and traverse in Python. Two fixed native Cypher proofs are available; no graph-algorithm library, PageRank or shortest-path routine is claimed. This MVP is not optimized for large graphs; entity search is bounded to 100 results for NovaPay / 2,000 for the public workspace, adjacency reads to 500, and trace pagination is not implemented.
 - Cross-record FalkorDB writes are not transactional; concurrent ingestion conflict control and migrations remain future work. Run one API worker for the JSON demo backend.
-- The UI is an interactive SVG explorer with focus and zoom, not a force-directed editor. No live ingestion UI or video asset is included.
+- The UI is an interactive SVG explorer with focus and zoom, not a force-directed editor. Operator ingestion uses an authenticated API; no public write control is exposed. A downloadable narrated demo video is included, but it shows local native storage, not a verified hosted deployment.
 
 **FalkorDB is the company graph, evidence store, and answer-trace memory in database mode. Every supported factual answer is built from graph relationships that can be inspected.**
 
