@@ -35,7 +35,9 @@ def test_company_video_recipe_guards_media_and_scene_order(tmp_path, monkeypatch
     path=Path(__file__).resolve().parents[1]/'tests/browser/render-company-brain.py'
     spec=importlib.util.spec_from_file_location('company_render',path)
     m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
-    assert len(m.CLIPS)==len(m.STARTS)==10
+    assert len(m.CLIPS)==len(m.STARTS)==11
+    assert '06-shortest-path' in m.NAMES
+    assert m.STARTS[5] == 62.6
     assert m.CUES[-1][1]==139.5
     assert 'Company Brain' in m.CUES[-1][2]
     monkeypatch.setattr(m,'VIDEO',tmp_path/'missing.webm')

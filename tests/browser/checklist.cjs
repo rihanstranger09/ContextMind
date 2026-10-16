@@ -157,6 +157,15 @@ function url(route) { return new URL(route, base).href; }
       await page.locator('#question').fill(question);
       await answer(workspace, () => page.locator('#question').press('Enter'), question);
       passed('Enter submits', workspace);
+      if(workspace==='novapay'){
+        const q='What is the shortest path from Alice Johnson to Database Cluster?';
+        await page.locator('#question').fill(q);
+        const r=await answer(workspace,()=>page.locator('#send').click(),q);
+        assert.equal(r.intent,'connection');
+        assert.deepEqual(r.graph_trace[0].edges.map(e=>e.type),['WORKED_ON','DEPENDS_ON']);
+        assert.equal(await page.locator('#graph .graph-node').count(),3);
+        passed('Bounded shortest-path tool and ordered path visualization',workspace);
+      }
 
       for (let i = 0; i < 5; i++) {
         await page.goto(url('/demo.html?workspace=' + workspace), {waitUntil: 'networkidle'});

@@ -38,9 +38,18 @@ let entities=[],current=rootEntity,graphData=null,zoom=1,busy=false; const welco
 async function api(path,body){path+=(path.includes('?')?'&':'?')+'workspace='+workspace;const r=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});if(!r.ok){let e=await r.json().catch(()=>({detail:'Request failed'}));throw new Error(typeof e.detail==='string'?e.detail:'Please check your request.')}return r.json()}
 function modal(title,html){$('#modal-title').textContent=title;$('#modal-content').innerHTML=html;$('#modal').showModal()}
 $('#close-modal').onclick=()=>$('#modal').close();$('#modal').onclick=e=>{if(e.target===$('#modal'))$('#modal').close()};
-$('#graph-model').onclick=()=>modal('Graph model · '+(isPublic?'public artifact snapshot':'fictional company brain'),isPublic
-  ? '<p>Real public GitHub artifacts, captured at a point in time. No internal decisions, private data or inferred maintainer assignments.</p><pre>Organization ─OWNS→ Repository ─VERSION→ Version\nPerson ─CONTRIBUTES_TO→ Repository ←ABOUT─ Guide / Document\nTicket ─IN_REPO→ Repository\nGuide ─DOCUMENTS→ Integration / Skill</pre><p>Public source nodes and edges carry GitHub URLs, collection time, integrity hash and inference labels.</p>'
-  : '<p><strong>NovaPay is fictional.</strong> These typed relationships power ownership, decision provenance, impact analysis and evidence memory.</p><pre>Person ─MEMBER_OF→ Team ─OWNS→ System\nSystem ─DEPENDS_ON→ System ←USES─ Project\nTicket ─BLOCKS→ Project ←IMPACTS─ Decision\nDecision ─BASED_ON→ Ticket / Message / Meeting / Document\nSaved investigation ─USED_EVIDENCE→ sources</pre><p>Native FalkorDB stores typed nodes and edges. The agent routes supported questions to bounded graph tools and saves answer traces.</p>');
+const schemaNodes=isPublic
+  ? [['Organization',85,80],['Repository',320,80],['Version',555,80],['Contributor',85,255],['Guide',555,255]]
+  : [['Person',85,80],['Team',320,80],['System',555,80],['Ticket / chat',85,255],['Decision',320,255],['Project',555,255]];
+const schemaLinks=isPublic
+  ? [[0,1,'OWNS'],[1,2,'VERSION'],[3,1,'CONTRIBUTES_TO'],[4,1,'ABOUT']]
+  : [[0,1,'MEMBER_OF'],[1,2,'OWNS'],[4,3,'BASED_ON'],[4,5,'IMPACTS']];
+$('#graph-model').onclick=()=>{
+  const links=schemaLinks.map(([a,b,label])=>{const [x1,y1]=schemaNodes[a].slice(1),[x2,y2]=schemaNodes[b].slice(1),dx=x2-x1,dy=y2-y1,d=Math.hypot(dx,dy);return `<line x1="${x1+dx*76/d}" y1="${y1+dy*20/d}" x2="${x2-dx*76/d}" y2="${y2-dy*20/d}" marker-end="url(#model-arrow)"/><text x="${(x1+x2)/2}" y="${(y1+y2)/2-11}" text-anchor="middle">${esc(label)}</text>`}).join('');
+  const nodes=schemaNodes.map(([name,x,y])=>`<g><rect x="${x-74}" y="${y-24}" width="148" height="48" rx="13"/><text x="${x}" y="${y+5}" text-anchor="middle">${esc(name)}</text></g>`).join('');
+  modal('Graph model · '+(isPublic?'public artifact snapshot':'fictional company brain'),
+    `<p>${isPublic?'Captured GitHub artifacts; no inferred human maintainer or internal decisions.':'NovaPay is fictional. Decisions also link to Meeting and Document evidence; saved investigations link to sources via USED_EVIDENCE.'}</p><svg class="model-svg" viewBox="0 0 640 340" role="img" aria-label="${isPublic?'Public artifact':'Fictional company'} graph node and relationship diagram"><defs><marker id="model-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10" fill="#9980ba"/></marker></defs>${links}${nodes}</svg><p>Native FalkorDB stores typed nodes and relationships. Read the exact query and traversal definitions in docs/graph-model-and-queries.md.</p>`);
+};
 // This is a fixed, read-only query. Never accept Cypher or graph names from the browser.
 $('#graph-proof').onclick=async()=>{
   if(!isPublic)return showCompanyProof();
@@ -79,6 +88,17 @@ let svg='<defs><marker id="arrow" viewBox="0 0 10 10" refX="24" refY="5" markerW
 for(const e of data.edges){if(!pos[e.source]||!pos[e.target])continue;let [x,y]=pos[e.source],[x2,y2]=pos[e.target];svg+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="#d9cfe6" stroke-width="1.1" marker-end="url(#arrow)"/><text x="${(x+x2)/2}" y="${(y+y2)/2-5}" text-anchor="middle" fill="#c0b0ce" font-size="6" style="paint-order:stroke;stroke:white;stroke-width:3px">${esc(e.type.replaceAll('_',' '))}</text>`}
 for(const n of visible){let [x,y]=pos[n.id],color=colors[n.type]||'#aaa',r=n===center?29:19;let icon={System:'▧',Project:'◇',Person:'♙',Team:'♧',Document:'▤',Ticket:'≡',Decision:'◷'}[n.type]||'◈';svg+=`<g class="graph-node" tabindex="0" role="button" aria-label="Explore ${esc(n.name)}" data-node="${esc(n.id)}"><circle cx="${x}" cy="${y}" r="${r+7}" fill="${color}" opacity=".06"/><circle cx="${x}" cy="${y}" r="${r}" fill="white" stroke="${color}" stroke-opacity=".55" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="${r-3}" fill="${color}" opacity=".1"/><text x="${x}" y="${y+7}" text-anchor="middle" fill="${color}" font-size="${n===center?26:20}">${icon}</text><text x="${x}" y="${y+r+16}" text-anchor="middle" fill="${n===center?'#8260a6':'#9f8eae'}" font-size="${n===center?11:8}" font-weight="${n===center?600:400}">${esc(n.name.length>29?n.name.slice(0,27)+'…':n.name)}</text></g>`}$('#graph').innerHTML=svg+'</g>';
 $('#graph').querySelectorAll('[data-node]').forEach(el=>{el.onclick=()=>selectNode(el.dataset.node);el.onkeydown=e=>{if(e.key==='Enter')selectNode(el.dataset.node)}})}
+function drawPath(data,edges,startId){
+  graphData=data;
+  const nodes=new Map(data.nodes.map(n=>[n.id,n]));let ids=[startId],key=startId;
+  for(const e of edges){key=e.source===key?e.target:e.source;ids.push(key)}
+  const x=i=>620*(i+1)/(ids.length+1),y=210;
+  let svg='<defs><marker id="path-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10" fill="#9978c2"/></marker></defs>';
+  edges.forEach((e,i)=>{const forward=e.source===ids[i],left=x(i)+35,right=x(i+1)-35;svg+=`<line x1="${forward?left:right}" y1="${y}" x2="${forward?right:left}" y2="${y}" stroke="#9978c2" stroke-width="2" marker-end="url(#path-arrow)"/><text x="${(x(i)+x(i+1))/2}" y="${y-14}" text-anchor="middle" font-size="12" fill="#674a8a">${esc(e.type)}</text>`});
+  ids.forEach((id,i)=>{const n=nodes.get(id);if(!n)return;svg+=`<g class="graph-node" tabindex="0" role="button" aria-label="Explore ${esc(n.name)}" data-node="${esc(id)}"><circle cx="${x(i)}" cy="${y}" r="28" fill="#faf7fe" stroke="#9978c2" stroke-width="2"/><text x="${x(i)}" y="${y+7}" text-anchor="middle" font-size="22" fill="#8b67ae">${n.type==='Person'?'♙':'▧'}</text><text x="${x(i)}" y="${y+49}" text-anchor="middle" font-size="12" font-weight="600" fill="#674a8a">${esc(n.name)}</text></g>`});
+  $('#graph').innerHTML=svg;
+  $('#graph').querySelectorAll('[data-node]').forEach(el=>{el.onclick=()=>selectNode(el.dataset.node);el.onkeydown=e=>{if(e.key==='Enter')selectNode(el.dataset.node)}});
+}
 async function selectNode(id,refresh=true){try{const n=await api('/api/entities/'+encodeURIComponent(id));current=id;$('#graph-focus').textContent=n.name+' ⌄';$('#entity-detail').innerHTML=`<div class="detail-kicker">IN FOCUS <span>${esc(n.type)}</span></div><h3><span class="node-square">▧</span>${esc(n.name)} ${n.criticality?`<span class="critical">${esc(n.criticality)}</span>`:''}</h3><p>${esc((n.content||n.rationale||n.title||n.status||'Explore ownership, dependencies, and connected evidence.').slice(0,400))}</p><div class="detail-footer"><span>${isPublic?'Captured '+esc(n.collected_at?.slice(0,10)):'Updated '+esc(n.updated_at?.slice(0,10))}</span><button id="investigate">Investigate →</button></div>`;$('#investigate').onclick=()=>ask(isPublic?'Find docs about '+n.name:n.type==='Decision'?'Why '+n.name+'?':n.type==='Project'?'What tickets block '+n.name+'?':n.type==='System'?'Who owns '+n.name+'?':'Find docs about '+n.name);if(refresh)draw(await api('/api/graph/subgraph?entity_id='+encodeURIComponent(id)+'&depth=2'))}catch(e){modal('Unable to load entity',esc(e.message))}}
 $('#investigate').onclick=()=>ask(isPublic?publicQuestions[0][1]:'Who owns Database Cluster?');$('#zoom-in').onclick=()=>{zoom=Math.min(1.8,zoom+.15);draw(graphData)};$('#zoom-out').onclick=()=>{zoom=Math.max(.6,zoom-.15);draw(graphData)};$('#reset-graph').onclick=()=>{zoom=1;selectNode(rootEntity)};
 $('#graph-focus').onclick=()=>{modal('Explore an entity',`<input id="entity-search" placeholder="Search systems, people, projects…" style="width:100%;padding:12px;border:1px solid #ddd1e8;border-radius:7px;margin-bottom:12px"><div id="entity-results"></div>`);const render=q=>{$('#entity-results').innerHTML=entities.filter(n=>n.name.toLowerCase().includes(q.toLowerCase())&&n.type!=='AgentDecision').map(n=>`<button class="modal-record" style="display:block;width:100%;text-align:left" data-select="${esc(n.id)}">${esc(n.name)} <small>· ${esc(n.type)}</small></button>`).join('');$('#entity-results').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('#modal').close();selectNode(b.dataset.select)})};render('');$('#entity-search').oninput=e=>render(e.target.value)};
@@ -93,7 +113,14 @@ if(r.tool_steps?.length)html+=`<details class="tool-steps"><summary>Tools used �
 html+=`<p style="font-size:8px;color:#afa0bb;line-height:1.7">${isPublic?'Public GitHub snapshot · No private data · No personal performance ranking.':'Fictional NovaPay data · Graph-derived answer · Verify operational availability before acting.'}</p>`;$('#conversation').innerHTML=html;
 $('#conversation').querySelectorAll('[data-trace]').forEach(b=>b.onclick=()=>{let t=r.graph_trace[+b.dataset.trace];modal('Evidence path',`<p>${esc(t.label)}</p><p>These stored graph relationships support this claim. This is an auditable retrieval trace, not hidden model reasoning.</p><pre>${esc(JSON.stringify(t.edges,null,2))}</pre>`)});
 $('#conversation').querySelectorAll('[data-inspect]').forEach(b=>b.onclick=()=>selectNode(b.dataset.inspect));$('#conversation').querySelectorAll('[data-source]').forEach(b=>b.onclick=()=>showSource(r.sources[+b.dataset.source]));
-if(r.graph.nodes.length){current=r.resolved_entities[0]?.id||r.graph.nodes[0].id;await selectNode(current,false);draw(r.graph);$('#graph-focus').textContent='Answer evidence ⌄'}
+if(r.graph.nodes.length){
+  const route=r.tool_steps?.find(s=>s.tool==='shortest_evidence_path');
+  current=route?.focus?.split(' → ')[0]||r.resolved_entities[0]?.id||r.graph.nodes[0].id;
+  await selectNode(current,false);
+  if(r.intent==='connection'&&r.graph_trace.length)drawPath(r.graph,r.graph_trace[0].edges,current);
+  else draw(r.graph);
+  $('#graph-focus').textContent='Answer evidence ⌄'
+}
 if(!isPublic)await loadHistory();
 }catch(e){$('#conversation').innerHTML+=`<div class="error">${esc(e.message)}. Please try again.</div>`;$('.loading')?.remove()}finally{busy=false;$('#send').disabled=false}}
 async function loadHistory(){

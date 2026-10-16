@@ -171,3 +171,17 @@ def test_reingest_updates_agent_blocker_answer(store,monkeypatch):
         resolved=client.post('/api/chat',json={'question':'What tickets block Analytics Migration?'}).json()
         assert 'New demo blocker' not in str(resolved['facts'])
         assert Store('demo',store.path).get('ticket_demo_fresh')['status']=='RESOLVED'
+
+
+def test_shortest_path_tool_uses_recorded_edges_not_answer_memory(store):
+    expected=Tools(store).shortest_evidence_path('person_alice','sys_database')
+    assert len(expected)==2
+    assert expected[0]['source']=='person_alice'
+    assert expected[-1]['target']=='sys_database'
+    result=Agent(store).ask('What is the shortest path from Alice Johnson to Database Cluster?')
+    assert result['intent']=='connection'
+    assert result['tool_steps'][1]['tool']=='shortest_evidence_path'
+    assert result['graph_trace'][0]['edges']==expected
+    assert all(e['type']!='USED_EVIDENCE' for e in expected)
+    assert Tools(store).shortest_evidence_path('person_alice','sys_database')==expected
+    assert Tools(store).shortest_evidence_path('missing','sys_database')==[]
