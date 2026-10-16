@@ -19,7 +19,7 @@ Try Python getting-started, LangChain integration, public contributor evidence, 
 
 ### Show FalkorDB in the presentation
 
-The [downloadable 2:20 Company Brain video](presentation/ContextMind-FalkorDB-demo.mp4) starts with **fictional NovaPay**: a decision traced to ticket/chat/meeting/RFC evidence, recorded tool calls, ownership, answer memory after reload, and a token-protected fictional ticket update that changes the next answer. It then switches to the **real public FalkorDB GitHub snapshot** for a contributor question and release-source evidence. Both workspaces show different fixed, parameterized **native Cypher proofs**; JSON preview says **CYPHER NOT EXECUTED**. No public human maintainer or public organizational decision is invented. See the [presenter runbook](docs/presenter-runbook.md) for recording steps and cautions. The MP4 includes user-selected Indian English narration and captions; raw footage and voice clips remain ignored under `deliverables/`. No cloud deployment or live feed is claimed.
+The [downloadable 2:20 Company Brain video](presentation/ContextMind-FalkorDB-demo.mp4) starts with **fictional NovaPay**: a decision traced to ticket/chat/meeting/RFC evidence, recorded tool calls, ownership, a bounded shortest-evidence-path search, answer memory after reload, and a token-protected fictional ticket update that changes the next answer. It then switches to the **real public FalkorDB GitHub snapshot** for a contributor question and release-source evidence. Both workspaces show different fixed, parameterized **native Cypher proofs**; JSON preview says **CYPHER NOT EXECUTED**. No public human maintainer or public organizational decision is invented. See the [presenter runbook](docs/presenter-runbook.md) for recording steps and cautions, and an [unpublished story draft](docs/company-brain-story.md) for a short write-up. The MP4 includes user-selected Indian English narration and captions; raw footage and voice clips remain ignored under `deliverables/`. No cloud deployment or live feed is claimed.
 
 ```sh
 python -m connectors.collect --org falkordb --source github  # optional, real API capture
@@ -133,6 +133,7 @@ More supported questions:
 
 - Who owns API Gateway?
 - Who knows the most about Payment Service?
+- What is the shortest path from Alice Johnson to Database Cluster?
 - What tickets block the Q4 launch?
 - Find docs about Database Cluster.
 
@@ -156,7 +157,7 @@ FalkorDB: typed entities and typed relationships
 ```
 
 - **`graph/store.py`**: parameterized FalkorDB storage plus an explicit JSON demo adapter. Entities have `:Entity` and their domain label (`:System`, `:Person`, etc.). Edges use native domain relationship types (`DEPENDS_ON`, `USES`, etc.). Node payloads preserve source metadata; `id`, `name`, `updated_at`, and `kind` are also directly queryable properties.
-- **`graph/tools.py`**: entity resolution, direct/team-lead ownership, expert ranking, reverse dependency traversal, decision evidence, blockers, knowledge gaps, and evidence retrieval. Impact analysis includes directly used systems and indirect dependencies up to five hops, with cycle protection. Visualization neighborhoods are capped at 70 nodes and depth 3.
+- **`graph/tools.py`**: entity resolution, direct/team-lead ownership, expert ranking, reverse dependency traversal, **bounded shortest-evidence-path BFS**, decision evidence, blockers, knowledge gaps, and evidence retrieval. Impact analysis includes directly used systems and indirect dependencies up to five hops, with cycle protection. Visualization neighborhoods are capped at 70 nodes and depth 3.
 - **`agents/public_brain.py`**: conservative public-workspace retrieval, source excerpts, artifact/activity queries, and missing-evidence controls. No personal rankings.
 - **`connectors/`**: bounded public GitHub capture, offline-ready snapshot, explicit full-refresh watcher, and snapshot Person removal.
 - **`agents/company_brain.py`**: routes supported questions, assembles only relevant facts/evidence, exposes auditable retrieval paths, and stores the answer trace. Unknown entities produce an explicit insufficient-context response.
@@ -231,7 +232,7 @@ This is a runnable hackathon foundation, **not a production knowledge/security p
 - Missing-owner detection reflects absence of recorded ownership, not a verified lack of a real-world owner. No employee-active-state checks yet.
 - Source cards mark records older than 90 days. Staleness does not automatically invalidate a source. No stale-doc risk scoring yet.
 - Expert scores do not model current workload or recent activity. No automated paging or work assignment.
-- Graph tools issue parameterized adjacency queries and traverse in Python. Two fixed native Cypher proofs are available; no graph-algorithm library, PageRank or shortest-path routine is claimed. This MVP is not optimized for large graphs; entity search is bounded to 100 results for NovaPay / 2,000 for the public workspace, adjacency reads to 500, and trace pagination is not implemented.
+- Graph tools issue parameterized adjacency queries and traverse in Python. Two fixed native Cypher proofs and a bounded BFS shortest-path tool over those reads are available; no native graph-algorithm library or PageRank is claimed. This MVP is not optimized for large graphs; entity search is bounded to 100 results for NovaPay / 2,000 for the public workspace, adjacency reads to 500, and trace pagination is not implemented.
 - Cross-record FalkorDB writes are not transactional; concurrent ingestion conflict control and migrations remain future work. Run one API worker for the JSON demo backend.
 - The UI is an interactive SVG explorer with focus and zoom, not a force-directed editor. Operator ingestion uses an authenticated API; no public write control is exposed. A downloadable narrated demo video is included, but it shows local native storage, not a verified hosted deployment.
 

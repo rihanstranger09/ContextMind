@@ -1,6 +1,6 @@
 from datetime import datetime,timezone
 from uuid import uuid4
-from graph.tools import Tools
+from graph.tools import Tools,normalize
 
 class Agent:
     def __init__(self,store): self.s=store; self.t=Tools(store)
@@ -8,7 +8,8 @@ class Agent:
         q=question.lower(); paths=[]; facts=[]; actions=[]; tool_steps=[]
         def run(name, fn, *args):
             result=fn(*args)
-            tool_steps.append(dict(tool=name, focus=args[0] if args and isinstance(args[0],str) else None, results=len(result)))
+            focus=' → '.join(args[:2]) if name=='shortest_evidence_path' else (args[0] if args and isinstance(args[0],str) else None)
+            tool_steps.append(dict(tool=name, focus=focus, results=len(result)))
             return result
         entities=run('resolve_entity',self.t.resolve_entity,question)
         intent='knowledge'
@@ -19,6 +20,14 @@ class Agent:
             intent='risk'
             for gap in run('knowledge_gaps',self.t.knowledge_gaps):
                 facts.append(dict(text=f"{gap['entity']['name']}: {', '.join(gap['missing'])}. This is missing graph data, not proof of no real-world owner.",path_indices=[],entity_id=gap['entity']['id']))
+        elif ('shortest path' in normalize(q) or 'how is' in normalize(q) and 'connected to' in normalize(q)) and len(entities)>=2:
+            intent='connection'
+            words=normalize(q)
+            pair=sorted(entities[:3],key=lambda n:(words.find(normalize(n['name'])) if normalize(n['name']) in words else 10**6,n['id']))[:2]
+            start,end=pair
+            path=run('shortest_evidence_path',self.t.shortest_evidence_path,start['id'],end['id'])
+            if path:
+                add(f"A shortest recorded path from {start['name']} to {end['name']} uses {len(path)} graph relationships. This is a bounded search of stored evidence, not proof of a current assignment.",[path])
         elif entities:
             entity=entities[0]; id=entity['id']; name=entity['name']
             if any(w in q for w in ['why','decision','delayed']):
@@ -54,7 +63,7 @@ class Agent:
         trace=[dict(edges=p,label=' · '.join(f"{self.s.get(e['source'])['name']} → {e['type']} → {self.s.get(e['target'])['name']}" for e in p)) for p in paths]
         now=datetime.now(timezone.utc)
         stale=[n['id'] for n in sources if (now-datetime.fromisoformat(n['updated_at'].replace('Z','+00:00'))).days>90]
-        answer='I do not have enough connected company context to answer confidently.' if not facts else {'impact':'Here’s the blast radius in your company graph.','ownership':'Here’s who owns it.','expert':'The strongest matches in your company graph.','decision':'The decision, connected to its evidence.','blockers':'These open tickets are blocking progress.','risk':'These critical systems have knowledge gaps.','knowledge':'Here’s the connected context.'}[intent]
+        answer='I do not have enough connected company context to answer confidently.' if not facts else {'impact':'Here’s the blast radius in your company graph.','ownership':'Here’s who owns it.','expert':'The strongest matches in your company graph.','decision':'The decision, connected to its evidence.','blockers':'These open tickets are blocking progress.','risk':'These critical systems have knowledge gaps.','connection':'Here’s the shortest recorded connection.','knowledge':'Here’s the connected context.'}[intent]
         result=dict(id='trace_'+uuid4().hex,question=question,answer=answer,intent=intent,facts=facts,sources=sources,graph_trace=trace,tool_steps=tool_steps,recommended_actions=actions,resolved_entities=entities[:3],freshness=dict(stale_sources=stale,latest_source_at=max((n['updated_at'] for n in sources),default=None)),graph=dict(nodes=[self.s.get(id) for id in sorted(ids)],edges=[e for i,p in enumerate(paths) for e in p if e not in [x for earlier in paths[:i] for x in earlier]]))
         self.s.upsert(dict(id=result['id'],type='AgentDecision',name=question,question=question,answer=answer,intent=intent,facts=facts,graph_trace=trace,tool_steps=tool_steps,source_ids=[n['id'] for n in sources],updated_at=now.isoformat()),[dict(source=result['id'],type='USED_EVIDENCE',target=n['id']) for n in sources])
         return result

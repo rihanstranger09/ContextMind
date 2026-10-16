@@ -16,10 +16,11 @@ VIDEO=MEDIA/'native-company-brain.webm'
 TIMELINE=MEDIA/'native-company-brain-timeline.json'
 OUTPUT=MEDIA/'contextmind-company-brain-final.mp4'
 CAPTIONS=MEDIA/'contextmind-company-brain-final.srt'
-NAMES=['intro','model','decision-proof','decision-answer','owner','memory','freshness','public-proof','public-activity','close']
-CLIPS=[MEDIA/'company-narration'/f'{i:02d}-{name}.mp3' for i,name in enumerate(NAMES,1)]
+NAMES=['01-intro','02-model','03-decision-proof','04-decision-answer','05-owner',
+       '06-shortest-path','06-memory','07-freshness','08-public-proof','09-public-activity','10-close']
+CLIPS=[MEDIA/'company-narration'/f'{name}.mp3' for name in NAMES]
 # Seconds relative to capture start; the browser timeline guards scene ordering.
-STARTS=[.7,12,18,31.7,50.3,63,75,97.2,113,128]
+STARTS=[.7,12,18,31.7,50.3,62.6,74.8,85,109.3,118.2,128]
 CUES=[
 (0.7,7.8,'Company knowledge is scattered. ContextMind connects people, tickets, chats, and decisions behind an answer.'),
 (7.8,12,'This demo runs on a real local FalkorDB instance.'),
@@ -30,13 +31,13 @@ CUES=[
 (39,46,'Open Tools used, the stored paths, and the underlying source records.'),
 (50.3,57,'Who owns the Database Cluster? Ownership is grounded in graph relationships.'),
 (57,62,'Always confirm the proposed responder’s current availability.'),
-(63,72.8,'Reload: saved investigations, tool steps and evidence traces persist in FalkorDB.'),
-(75,83,'An authenticated operator adds a fictional blocker. Re-asking sees the updated graph.'),
-(83,91.5,'After it is resolved, it leaves active blockers. Earlier answer snapshots remain saved.'),
-(97.2,104,'The separate public workspace uses another native Cypher traversal.'),
-(104,112,'The organization, Python client and releases link to public GitHub artifacts.'),
-(113,120,'Public contributor activity is evidence, not proof of maintainer status.'),
-(120,127.7,'This snapshot is bounded, not a live feed or a private company dataset.'),
+(62.6,68,'A bounded shortest-path tool connects Alice through the API Gateway.'),
+(68,74.4,'Alice WORKED_ON the gateway; the gateway DEPENDS_ON the Database Cluster.'),
+(74.8,84.7,'Reload: saved investigations, tool steps and evidence traces persist in FalkorDB.'),
+(85,93,'An authenticated operator adds a fictional blocker. Re-asking sees the updated graph.'),
+(93,102,'After it is resolved, it leaves active blockers. Earlier answer snapshots remain saved.'),
+(109.3,118,'The same engine, now on real public data. A native traversal reaches GitHub releases.'),
+(118.2,126.3,'Public contributor counts are evidence, not proof of maintainer status. This snapshot is bounded.'),
 (128,139.5,'ContextMind · Company Brain. Repository and full local setup in README; no cloud deployment is claimed.')]
 
 
@@ -67,10 +68,10 @@ def render():
     for file in [VIDEO,TIMELINE,*CLIPS]:
         if not file.is_file(): raise SystemExit(f'Missing media: {file.name}. Record native footage and supply narration first.')
     timeline=json.loads(TIMELINE.read_text())
-    expected=['intro','model','decision_proof','decision_answer','ownership','memory','before_sync','public_proof','public_activity','close']
+    expected=['intro','model','decision_proof','decision_answer','ownership','shortest_path','memory','before_sync','public_proof','public_activity','close']
     observed=[timeline[key] for key in expected]
     if observed!=sorted(observed): raise SystemExit('Unexpected recording scene order')
-    for expected_start,real_start in zip((.7,8.2,17.3,31.6,50.3,63,72.6,97.6,112.2,127.7),observed):
+    for expected_start,real_start in zip((.7,8.2,17.3,31.6,50.3,62.5,74.7,84.3,109.4,118.1,127.6),observed):
         if abs(real_start-expected_start)>4:
             raise SystemExit('Recording scene timing changed; review/re-time narration instead of mislabeling footage')
     ffmpeg=binary()
