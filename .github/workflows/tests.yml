@@ -1,0 +1,38 @@
+name: Tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+      - run: node --check frontend/app.js && node --check frontend/demo.js && node --check tests/browser/checklist.cjs && node --check tests/browser/record-showcase.cjs
+  falkordb:
+    runs-on: ubuntu-latest
+    services:
+      graph:
+        image: falkordb/falkordb:v4.12.0
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: pytest -q tests/test_falkordb_integration.py
+        env:
+          FALKOR_INTEGRATION: '1'

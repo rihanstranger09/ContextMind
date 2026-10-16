@@ -1,0 +1,25 @@
+{"q": "How do I get started with FalkorDB in Python?", "intent": "public_search", "must_cite_fragment": "falkordb-py", "expect_evidence": true}
+{"q": "How do I use FalkorDB with LangChain?", "intent": "public_search", "must_cite_fragment": "langchain", "expect_evidence": true}
+{"q": "Find docs about GraphRAG SDK", "intent": "public_search", "must_cite_fragment": "GraphRAG", "expect_evidence": true}
+{"q": "Find docs about the Java client", "intent": "public_search", "must_cite_fragment": "JFalkorDB", "expect_evidence": true}
+{"q": "Find docs about the Node.js client", "intent": "public_search", "must_cite_fragment": "node-falkordb", "expect_evidence": true}
+{"q": "How do I use the MCP server?", "intent": "public_search", "must_cite_fragment": "MCP", "expect_evidence": true}
+{"q": "How do I use Graphiti?", "intent": "public_search", "must_cite_fragment": "graphiti", "expect_evidence": true}
+{"q": "Find docs about Cognee agent memory", "intent": "public_search", "must_cite_fragment": "cognee", "expect_evidence": true}
+{"q": "Find docs about Cypher MATCH", "intent": "public_search", "must_cite_fragment": "cypher", "expect_evidence": true}
+{"q": "Who maintains the Python client?", "intent": "public_activity", "must_cite_fragment": "falkordb-py", "expect_evidence": true}
+{"q": "Who contributes to GraphRAG SDK?", "intent": "public_activity", "must_cite_fragment": "GraphRAG-SDK", "expect_evidence": true}
+{"q": "Who maintains the Java client?", "intent": "public_activity", "must_cite_fragment": "JFalkorDB", "expect_evidence": true}
+{"q": "Who contributes to the Node.js client?", "intent": "public_activity", "must_cite_fragment": "node-falkordb", "expect_evidence": true}
+{"q": "Which repositories are actively maintained?", "intent": "public_activity", "must_cite_fragment": "github.com/FalkorDB", "expect_evidence": true}
+{"q": "What are the latest FalkorDB releases?", "intent": "public_releases", "must_cite_fragment": "/releases/", "expect_evidence": true}
+{"q": "Show Python client releases", "intent": "public_releases", "must_cite_fragment": "falkordb-py/releases/", "expect_evidence": true}
+{"q": "Show GraphRAG SDK releases", "intent": "public_releases", "must_cite_fragment": "GraphRAG-SDK/releases/", "expect_evidence": true}
+{"q": "Show open issues for the Python client", "intent": "public_issues", "must_cite_fragment": "falkordb-py", "expect_evidence": true}
+{"q": "Has anyone reported performance issues with large graphs?", "intent": "public_issues", "must_cite_fragment": "FalkorDB/FalkorDB", "expect_evidence": true}
+{"q": "What is FalkorDB annual revenue?", "intent": "insufficient_context", "must_cite_fragment": null, "expect_evidence": false}
+{"q": "What is the CEO salary?", "intent": "insufficient_context", "must_cite_fragment": null, "expect_evidence": false}
+{"q": "Tell me the private roadmap", "intent": "insufficient_context", "must_cite_fragment": null, "expect_evidence": false}
+{"q": "Why did FalkorDB choose Cypher?", "intent": "insufficient_context", "must_cite_fragment": null, "expect_evidence": false}
+{"q": "Which Python client version supports FalkorDB v1.0+?", "intent": "insufficient_context", "must_cite_fragment": null, "expect_evidence": false}
+{"q": "What are the breaking changes from v1.0 to v1.1?", "intent": "insufficient_context", "must_cite_fragment": null, "expect_evidence": false}
