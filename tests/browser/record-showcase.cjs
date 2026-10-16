@@ -39,13 +39,13 @@ const hold = ms => new Promise(resolve => setTimeout(resolve, ms));
     page.setDefaultTimeout(20000);
     await page.goto(new URL('/demo.html?workspace=falkordb', base).href, {waitUntil: 'networkidle'});
     await page.waitForFunction(() => document.querySelector('#proof-readiness')?.textContent.includes('READY FOR NATIVE RECORDING'));
-    await hold(4000);
+    await hold(7000);
     await page.goto(new URL('/dashboard?workspace=falkordb', base).href, {waitUntil: 'networkidle'});
     await page.waitForFunction(() => document.querySelector('#backend')?.textContent.includes('FalkorDB storage'));
-    await hold(4000);
+    await hold(8000);
     await page.locator('#graph-proof').click();
     await page.locator('#modal .proof-state.native').waitFor();
-    await hold(13000);
+    await hold(22000);
     await page.locator('#close-modal').click();
 
     async function ask(question) {
@@ -56,17 +56,17 @@ const hold = ms => new Promise(resolve => setTimeout(resolve, ms));
       await page.locator('.answer-title').waitFor();
     }
     await ask('How do I use FalkorDB with LangChain?');
-    await hold(7000);
+    await hold(17000);
     await page.locator('.source-card').first().click();
     await page.locator('#modal[open]').waitFor();
-    await hold(5500);
+    await hold(8000);
     await page.locator('#close-modal').click();
     await page.locator('#conversation summary').click();
-    await hold(6500);
+    await hold(10000);
     await page.locator('#new-chat').click();
     await ask('What is FalkorDB annual revenue?');
     assert((await page.locator('.answer-title').innerText()).includes('not in the collected snapshot'));
-    await hold(6000);
+    await hold(21000);
     const video = page.video();
     await context.close();
     const file = path.resolve(__dirname, '../../deliverables/native-falkordb-showcase.webm');
