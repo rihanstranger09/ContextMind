@@ -17,6 +17,10 @@ Try Python getting-started, LangChain integration, public contributor evidence, 
 
 **[Full scope, collection/replay commands, privacy removal, freshness, and limitations →](docs/falkordb-public-data.md)**
 
+### Show FalkorDB in the presentation
+
+Open `/demo.html?workspace=falkordb` for a timed native-database walkthrough, then click **FALKORDB PROOF** in the public dashboard. The fixed read-only `/api/graph/showcase?workspace=falkordb` endpoint runs a parameterized, two-hop Cypher traversal and graph counts **only in FalkorDB storage mode**; in JSON mode it is explicitly labeled a preview and **does not claim Cypher was executed**. It links the organization → Python client → releases to actual source URLs. See the [presenter runbook](docs/presenter-runbook.md) for a ~1:45 shot list and recording checks. This is a bounded public GitHub snapshot, not a live feed or a benchmark.
+
 ```sh
 python -m connectors.collect --org falkordb --source github  # optional, real API capture
 python data/seed.py --org falkordb                           # offline snapshot replay

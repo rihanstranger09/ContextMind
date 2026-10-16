@@ -29,4 +29,6 @@ BROWSER_EXECUTABLE=/path/to/chromium BASE_URL=http://127.0.0.1:8000 npm test --p
 
 The default tested origin is `http://127.0.0.1:8000`. All browser API requests must stay on that page origin. `BASE_URL` allows testing another accessible deployment, but **the suite submits questions**, which persist NovaPay answer traces; do not run against sensitive production data. The browser uses `--no-sandbox` for container compatibility and must only visit a trusted test application. CORS/web security remains enabled.
 
+The browser checks also click the public **FALKORDB PROOF** button and assert that native and JSON modes use different, accurate labels. For a silent, guarded native-graph recording (not a finished narrated video), see [presenter runbook](../../docs/presenter-runbook.md); the `record` script refuses to film JSON storage.
+
 Reports and desktop/mobile screenshots go to ignored `.runtime/browser-results/`. The process exits nonzero on any failed assertion, HTTP error, network failure, uncaught page exception, or red browser-console message. A failed run may stop before later checklist items. This is not a visual-regression, accessibility, native-FalkorDB, or cross-browser test suite.

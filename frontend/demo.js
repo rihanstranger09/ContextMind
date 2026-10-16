@@ -10,13 +10,18 @@ if (location.protocol === 'http:' || location.protocol === 'https:') {
     const health = await response.json();
     if (!response.ok || health.status !== 'healthy') throw new Error('Unhealthy service');
     status.textContent = `Healthy · ${health.version} · Graph mode: ${health.graph_mode} · Workspace: ${health.company} · ${health.fictional_data?'Fictional data':'Public snapshot'}`;
+    if (document.querySelector('#proof-readiness')) document.querySelector('#proof-readiness').textContent = health.graph_mode==='falkordb'
+      ? 'READY FOR NATIVE RECORDING · FalkorDB storage is active.'
+      : 'PREVIEW ONLY · JSON storage is active. Do not claim Cypher executed; switch to FalkorDB mode before recording native proof.';
   } catch {
     status.textContent = 'Health check failed. Serve this page through ContextMind and check /api/health before presenting the demo.';
+    if (document.querySelector('#proof-readiness')) document.querySelector('#proof-readiness').textContent='NOT READY · Backend health check failed.';
   }
 })();
 
 // The public workspace is separate from the fictional NovaPay walkthrough.
 if (new URLSearchParams(location.search).get('workspace') === 'falkordb') {
+  document.querySelector('#graph-demo').hidden=false;
   document.querySelector('.eyebrow').textContent = 'FALKORDB · PUBLIC GITHUB SNAPSHOT';
   document.querySelector('h1').textContent = 'ContextMind × FalkorDB';
   const questions = [

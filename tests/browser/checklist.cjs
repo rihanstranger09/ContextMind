@@ -83,6 +83,18 @@ function url(route) { return new URL(route, base).href; }
       if (new URL(page.url()).searchParams.get('workspace') !== workspace) await page.waitForURL('**/dashboard?workspace=' + workspace);
       await ready(workspace);
       passed('Header workspace selector', workspace);
+      if (workspace === 'falkordb') {
+        await page.locator('#graph-proof').click();
+        await page.locator('#modal[open] .proof-state').waitFor({state: 'visible'});
+        const badge = await page.locator('.proof-state').innerText();
+        assert(badge.includes(report.storage === 'falkordb' ? 'CYPHER EXECUTED' : 'CYPHER NOT EXECUTED'));
+        assert((await page.locator('.proof-query').innerText()).includes('MATCH (org:Entity'));
+        assert.equal(await page.locator('.proof-path').count(), 3);
+        assert((await page.locator('.proof-path').first().innerText()).includes('FalkorDB/falkordb-py'));
+        assert((await page.locator('.proof-path a').first().getAttribute('href')).startsWith('https://github.com/'));
+        await page.locator('#close-modal').click();
+        passed('Graph proof honestly reports native Cypher or JSON preview', workspace);
+      }
       const question = workspace === 'novapay' ? 'Who owns Database Cluster?' : 'How do I use FalkorDB with LangChain?';
       await page.locator('#question').click();
       assert(await page.locator('#question').evaluate(el => el === document.activeElement));
@@ -122,6 +134,10 @@ function url(route) { return new URL(route, base).href; }
       for (let i = 0; i < 5; i++) {
         await page.goto(url('/demo.html?workspace=' + workspace), {waitUntil: 'networkidle'});
         await page.waitForFunction(() => document.querySelector('#health').textContent.startsWith('Healthy'));
+        if (workspace === 'falkordb') {
+          const readiness = await page.locator('#proof-readiness').innerText();
+          assert(readiness.includes(report.storage === 'falkordb' ? 'READY FOR NATIVE RECORDING' : 'PREVIEW ONLY'));
+        }
         const demoLink = page.locator('#questions a').nth(i);
         const demoQuestion = await demoLink.innerText();
         await demoLink.click();

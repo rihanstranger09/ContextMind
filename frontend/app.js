@@ -28,6 +28,7 @@ if(isPublic){
   $('.metrics>div:nth-child(2) div>span').textContent='Visible graph relationships';
   $('.input-hint>span').textContent='Source excerpts, not inferred company decisions.';
   $('.demo-badge').href='/demo.html?workspace=falkordb';
+  $('#graph-proof').hidden=false;
 }
 $('#workspace-select').value=workspace;
 $('#workspace-select').onchange=e=>{location.href='/dashboard?workspace='+e.target.value};
@@ -35,6 +36,26 @@ let entities=[],current=rootEntity,graphData=null,zoom=1,busy=false; const welco
 async function api(path,body){path+=(path.includes('?')?'&':'?')+'workspace='+workspace;const r=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});if(!r.ok){let e=await r.json().catch(()=>({detail:'Request failed'}));throw new Error(typeof e.detail==='string'?e.detail:'Please check your request.')}return r.json()}
 function modal(title,html){$('#modal-title').textContent=title;$('#modal-content').innerHTML=html;$('#modal').showModal()}
 $('#close-modal').onclick=()=>$('#modal').close();$('#modal').onclick=e=>{if(e.target===$('#modal'))$('#modal').close()};
+// This is a fixed, read-only query. Never accept Cypher or graph names from the browser.
+$('#graph-proof').onclick=async()=>{
+  modal('FalkorDB · the graph is the engine','<p>Reading the graph…</p>');
+  try{
+    const proof=await api('/api/graph/showcase');
+    const native=proof.native_cypher_executed;
+    const sourceLink=n=>{
+      try{const url=new URL(n.source_url);if(url.protocol==='https:'&&url.hostname==='github.com')return `<a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">View release source ↗</a>`}catch{}
+      return 'Source URL not available';
+    };
+    const trails=proof.paths.map(p=>`<div class="proof-path"><strong>${esc(p.nodes[0].name)}</strong><span>─ ${esc(p.relationships[0])} →</span><strong>${esc(p.nodes[1].name)}</strong><span>─ ${esc(p.relationships[1])} →</span><strong>${esc(p.nodes[2].name)}</strong><small>${sourceLink(p.nodes[2])}</small></div>`).join('');
+    $('#modal-content').innerHTML=`<div class="proof-state ${native?'native':'preview'}">${native?'● NATIVE FALKORDB · CYPHER EXECUTED':'○ JSON PREVIEW · CYPHER NOT EXECUTED'}</div>
+      <p>${native?'These results were read from the FalkorDB graph with native Cypher.':'These results came from the bundled JSON snapshot. Start with GRAPH_BACKEND=falkordb to run the Cypher below against a real database.'}</p>
+      <div class="proof-metrics"><div><strong>${Number(proof.entity_count).toLocaleString()}</strong><span>Stored entities</span></div><div><strong>${Number(proof.relationship_count).toLocaleString()}</strong><span>Stored relationships</span></div></div>
+      <h3>Two-hop graph traversal · organization → Python client → releases</h3>
+      <pre class="proof-query">${esc(proof.cypher)}</pre><p class="proof-params">Parameters: ${esc(JSON.stringify(proof.parameters))}</p>
+      <h3>Paths with public release evidence</h3>${trails||'<p>No matching release paths in this snapshot.</p>'}
+      <p class="proof-foot">${native?'Server-side proof: '+esc(proof.elapsed_ms)+' ms. This is not a benchmark.':'The Cypher above is illustrative until native mode is enabled.'} Public GitHub snapshot; not a live feed.</p>`;
+  }catch(e){$('#modal-content').innerHTML='<p class="error">Graph proof unavailable: '+esc(e.message)+'</p>'}
+};
 const colors={Repository:'#997acb',Organization:'#b28ccc',Version:'#73ad9d',Guide:'#73ad9d',Integration:'#7a9bd3',System:'#997acb',Project:'#7a9bd3',Person:'#d0a264',Team:'#d0a264',Document:'#73ad9d',Ticket:'#73ad9d',Message:'#73ad9d',Meeting:'#73ad9d',Decision:'#b28ccc',Incident:'#c9a170'};
 function draw(data){graphData=data;const nodes=data.nodes.filter(n=>n&&n.type!=='AgentDecision');let visible=nodes.filter(n=>n.id===current||['System','Project','Person','Team','Repository','Organization','Integration'].includes(n.type));if(visible.length<6)visible=nodes;visible=visible.slice(0,17);if(!visible.some(n=>n.id===current)&&nodes.some(n=>n.id===current))visible=[nodes.find(n=>n.id===current),...visible.slice(0,16)];
 const center=visible.find(n=>n.id===current)||visible[0];const outer=visible.filter(n=>n!==center);const pos={};if(center)pos[center.id]=[310,207];outer.forEach((n,i)=>{let a=-Math.PI/2+i*2*Math.PI/outer.length;pos[n.id]=[310+Math.cos(a)*(i%2?234:192),207+Math.sin(a)*(i%2?153:150)]});

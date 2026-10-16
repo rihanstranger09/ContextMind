@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel,Field
 from graph.store import Store
 from graph.tools import Tools
+from graph.showcase import graph_showcase
 from agents.company_brain import Agent
 from agents.public_brain import PublicAgent
 
@@ -82,6 +83,11 @@ def experts(id:str,workspace:Workspace='novapay'):
     return Tools(store(workspace)).find_experts(id)
 @app.get('/api/decisions/{id}/trace')
 def decision(id:str,workspace:Workspace='novapay'): require_entity(id,workspace); return Tools(store(workspace)).explain_decision(id)
+@app.get('/api/graph/showcase')
+def showcase(workspace:Workspace='falkordb'):
+    if workspace != 'falkordb': raise HTTPException(422,'Graph proof uses the public FalkorDB snapshot')
+    return graph_showcase(store(workspace))
+
 @app.get('/api/graph/subgraph')
 def subgraph(entity_id:str|None=None,depth:int=Query(2,ge=0,le=3),workspace:Workspace='novapay'):
     entity_id=entity_id or ('org_falkordb' if workspace=='falkordb' else 'sys_database')
