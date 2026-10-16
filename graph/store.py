@@ -69,6 +69,15 @@ class Store:
         rows=self.query('MATCH (n:Entity) WHERE n.kind <> "AgentDecision" AND ($kind = "" OR n.kind = $kind) AND n.search CONTAINS $text RETURN n.payload LIMIT $limit',kind=type or '',text=text,limit=limit)
         return [json.loads(r[0]) for r in rows]
 
+    def recent_investigations(self,limit=10):
+        """Persisted fictional-workspace answer memory (never public contributor history)."""
+        if self.workspace!='novapay': return []
+        if self.backend=='demo':
+            records=[n for n in self.nodes.values() if n['type']=='AgentDecision']
+            return sorted(records,key=lambda n:(n['updated_at'],n['id']),reverse=True)[:limit]
+        rows=self.query('MATCH (n:Entity:AgentDecision) RETURN n.payload ORDER BY n.updated_at DESC LIMIT $limit',limit=limit)
+        return [json.loads(row[0]) for row in rows]
+
     def adjacent(self,id):
         if self.backend=='demo': return [e for e in self.edges if id in (e['source'],e['target'])]
         rows=self.query('MATCH (a:Entity)-[r]->(b:Entity) WHERE a.id=$id OR b.id=$id RETURN a.id,type(r),b.id,r.payload LIMIT 500',id=id)

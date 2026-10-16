@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from app.main import app
-from graph.showcase import CYPHER, graph_showcase
+from graph.showcase import CYPHER, graph_showcase, COMPANY_CYPHER, company_showcase
 from graph.store import Store
 
 
@@ -29,3 +29,15 @@ def test_showcase_api_rejects_other_workspace_and_untrusted_parameters(tmp_path)
         assert result.json()['native_cypher_executed'] is False
         assert result.json()['cypher'] == CYPHER
         assert s.get('org_falkordb') is not None
+
+
+def test_company_decision_proof_is_labeled_in_demo_and_has_sources(tmp_path):
+    s=Store('demo',tmp_path/'company.json',workspace='novapay')
+    proof=company_showcase(s)
+    assert not proof['native_cypher_executed']
+    assert proof['cypher']==COMPANY_CYPHER
+    assert {n['type'] for n in proof['evidence']}=={'Ticket','Message','Meeting','Document'}
+    with TestClient(app) as client:
+        app.state.store=s
+        assert client.get('/api/graph/company-proof?workspace=novapay').json()['evidence']==proof['evidence']
+        assert client.get('/api/graph/company-proof?workspace=falkordb').status_code==422

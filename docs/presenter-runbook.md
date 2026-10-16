@@ -1,32 +1,31 @@
-# Native FalkorDB presentation runbook
+# Company Brain · native FalkorDB presentation runbook
 
-A **narrated, captioned local take** is available as [a downloadable MP4](../presentation/ContextMind-FalkorDB-demo.mp4); it was recorded against a native local FalkorDB module, **not** a cloud instance or a published deployment. Raw footage, narration clips and intermediates are kept out of Git under ignored `deliverables/`. Use a native database in the final video: the public GitHub dataset and the storage engine are separate things. Never call the JSON preview “running on FalkorDB.” Do not display `.env.txt`, passwords, connection strings, cloud consoles, or private graphs on camera.
+[Download the current narrated, captioned 2:20 MP4](../presentation/ContextMind-FalkorDB-demo.mp4). It was filmed against a **local native FalkorDB module**, not an unverified cloud deployment. NovaPay is a **fictional** company; the FalkorDB workspace is a **bounded GitHub snapshot**. The narration uses a user-selected Indian English masculine AI voice. The video has not been published or submitted automatically. Do not show credentials or claim that source timestamps imply live data.
 
-## Rehearsal (local, no cloud credentials)
+## Safe local setup and recording
 
-1. Install the app dependencies: `pip install -r requirements.txt`.
-2. Start an isolated FalkorDB service: `docker compose up --build`. This starts the app at `http://localhost:8000` and a local FalkorDB instance on a private Compose network, **not** a hosted/cloud instance. The app seeds two separate graphs on first boot: fictional NovaPay and the public FalkorDB snapshot. If Docker is unavailable, point `GRAPH_BACKEND=falkordb` at another isolated FalkorDB instance using the documented variables; do not substitute the JSON adapter.
-3. Visit `/demo.html?workspace=falkordb` and verify the readiness line says **READY FOR NATIVE RECORDING**. Open `/api/health?workspace=falkordb`: `graph_mode` must be `falkordb` and status `healthy`. Open `/api/graph/showcase?workspace=falkordb`: `native_cypher_executed` must be `true` and `paths` nonempty. If not, stop and fix the environment rather than editing the video to conceal it.
-4. For a cloud-based shoot, inject `FALKOR_HOST`, `FALKOR_PORT`, `FALKOR_USERNAME`, `FALKOR_PASSWORD`, `FALKOR_SSL=true`, `GRAPH_BACKEND=falkordb` and a **dedicated graph prefix** into the deployment's secret variables; alternatively use `FALKOR_URL=rediss://...`. Never show that URL on screen. See README's cloud setup. Startup seeds empty graphs; do not connect this public demo to a sensitive production database.
-5. Optional native integration validation: `FALKOR_INTEGRATION=1 pytest -q tests/test_falkordb_integration.py` against a **disposable** database. This test deletes its own uniquely named graph. Do not run on a restricted production account. The fixed read-only showcase endpoint itself does not modify data.
-6. To capture native browser footage, run `npm ci --prefix tests/browser`, `tests/browser/node_modules/.bin/playwright install ffmpeg` (Playwright's video encoder), then `CHROMIUM_BUNDLED_LIBS=1 npm run record --prefix tests/browser` while the native app is running. Output is ignored by Git at `deliverables/native-falkordb-showcase.webm`. The script **refuses** JSON mode or an empty native proof; it does not show credentials or cloud settings. It holds each shot long enough for narration (about 95 seconds).
-7. Supply five narration clips under `deliverables/narration/` named `01-intro.mp3`, `02-proof.mp3`, `03-question.mp3`, `04-trace.mp3`, `05-boundary.mp3`. The current take uses user-selected **Indian English masculine AI narration**; clips are generated outside the repository and not committed. With ffmpeg installed (`FFMPEG=/path/to/ffmpeg` if not on PATH), run `python tests/browser/render-showcase.py`. The renderer checks that clip durations fit their shots, mixes audio, burns in readable captions, and writes `deliverables/contextmind-falkordb-presenting-video.mp4` plus a separate `.srt` file. Review sync, captions, attribution and hackathon rules before publishing; the generated MP4 is not automatically submitted.
+1. Install `requirements.txt`, `npm ci --prefix tests/browser`, Playwright's video encoder (`tests/browser/node_modules/.bin/playwright install ffmpeg`), and provide ffmpeg for the render stage (`FFMPEG=/path/to/ffmpeg` if not on PATH). Docker Compose can start an isolated native database + app: `docker compose up --build`. For the recording-only ingest, use an **operator token** on an isolated test instance, not a production secret. Both workspaces must return `healthy`, `graph_mode: falkordb` from `/api/health?workspace=novapay` and `?workspace=falkordb`.
+2. Start a **fresh, disposable graph prefix** for every take. The guard checks `/api/graph/company-proof?workspace=novapay` and `/api/graph/showcase?workspace=falkordb` for nonempty native query results before filming. If JSON storage is active it refuses to record.
+3. With the isolated app running and the operator token in **local environment variables only**, run `BASE_URL=http://127.0.0.1:8000 VIDEO_INGEST_TOKEN="$INGEST_TOKEN" CHROMIUM_BUNDLED_LIBS=1 npm run record:company --prefix tests/browser`. The recorder sends normalized fictional ticket writes through the token-protected API; the token never appears in the browser, video, logs, repo, or README. It saves raw WebM and scene timing JSON under ignored `deliverables/`.
+4. Supply ten same-speaker narration clips (`01-intro.mp3` through `10-close.mp3` in `deliverables/company-narration/`, names in `render-company-brain.py`). Render with `python tests/browser/render-company-brain.py`. The renderer checks scene timing and clip lengths, burns in captions, and exports a high-bitrate H.264/AAC MP4 and an SRT sidecar under ignored `deliverables/`. Review every claim and caption before copying the final MP4 into `presentation/` for a persistent download.
 
-## Recorded shot list (about 1 minute 35 seconds)
+## Recorded sequence (~2 minutes 20 seconds)
 
-| Time | Screen | Narration focus |
+| Moment | Actual footage | Honest claim |
 |---|---|---|
-| 0:00–0:16 | Public demo guide and dashboard sidebar | Public GitHub snapshot; native FalkorDB backend, not a JSON mock. |
-| 0:16–0:39 | Click **FALKORDB PROOF**; hold on native status, Cypher, counts, path/source | Fixed parameterized Cypher traversal, graph counts and provenance links. |
-| 0:39–0:57 | Ask “How do I use FalkorDB with LangChain?” | Bounded, source-backed answer, not an invented connection. |
-| 0:57–1:14 | Open source and expand “Why this answer?” | Show attributed GitHub artifact and relationship evidence trace. |
-| 1:14–1:35 | Ask “What is FalkorDB annual revenue?” | Refuse unsupported financial claims; snapshot, not live data or LLM synthesis. |
+| 0:00 | NovaPay dashboard (native storage label) | Scattered fictional docs, tickets, chats and decisions can be connected. |
+| 0:08 | **Graph model** modal | Typed node and relationship schema, explicitly fictional. |
+| 0:17 | **Decision Cypher** proof | Fixed native `BASED_ON` + `IMPACTS` query links a fictional decision to ticket/chat/meeting/RFC. |
+| 0:32 | Ask why migration was delayed | Deterministic tool routing, linked evidence paths and source cards; not autonomous planning. |
+| 0:50 | Ask who owns database | Recorded ownership and expert evidence, not verified real-time availability. |
+| 1:03 | Reload and open recent investigation | Saved answer, tool steps and graph trace persist across page reloads. |
+| 1:13–1:37 | Authenticated fictional ticket ingest → re-ask → resolve → re-ask | Graph data changes; older answer remains saved; latest active blockers change. Not a live GitHub sync. |
+| 1:38 | Public FalkorDB proof | Separate graph, second fixed native Cypher query and real GitHub release citation. |
+| 1:52 | Ask about Python client maintainers | Bounded public activity evidence; no maintainer assignment inferred. The public Decisions tab is hidden. |
+| 2:08 | End card | Company Brain track; GitHub repo and complete local setup. Explicitly **no verified cloud deployment**. |
 
-Show the green **NATIVE FALKORDB · CYPHER EXECUTED** badge only with `GRAPH_BACKEND=falkordb`. In JSON mode it explicitly says **CYPHER NOT EXECUTED**. Timings on the panel measure this server-side proof request only; do not call them a benchmark or claim a speedup. The graph counts are graph storage counts, not the number of visible SVG nodes. The public workspace is a bounded snapshot from GitHub; do not imply verified maintainer status, live updates, or private company access. NovaPay is fictional.
+## Integrity / submission reminder
 
-## Why this matters / checks
+The graph proof endpoints do not accept user-supplied Cypher or graph names. JSON mode is labeled **CYPHER NOT EXECUTED**. The UI shows *actual* tool calls, not hidden chain-of-thought. No MCP interface, LLM tool caller, graph-algorithm package or live public deployment is claimed. Timings are not benchmarks. [Graph model/queries](graph-model-and-queries.md) and [submission checklist](submission-checklist.md) explain scope.
 
-- The showcased multi-hop query is allowlisted and parameterized on the server; the client cannot submit arbitrary Cypher. Graph names and credentials are never sent to the browser.
-- Two workspace graphs are isolated by name; the proof targets only the public graph.
-- Unit tests ensure JSON mode never claims execution; the opt-in integration test executes the fixed query on a real FalkorDB service. Browser tests click the proof button and validate the native/preview label.
-- Video eligibility: this repository had a prototype and earlier recording **before** the October 15–18, 2026 event. Confirm hackathon rules/eligibility with organizers; recording a new video or adding features during the event does not retroactively make earlier work new.
+**Eligibility is unresolved:** this repo documents a prototype and native video recorded before the October 15–18, 2026 event. New changes/video do not retroactively make its core implementation new. Confirm with organizers before submitting, disclose AI assistance accurately, and do not alter commit dates. Do not use this MP4 as evidence of a hosted cloud test.

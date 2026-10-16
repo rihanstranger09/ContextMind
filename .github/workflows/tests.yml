@@ -15,7 +15,7 @@ jobs:
           node-version: '22'
       - run: pip install -r requirements.txt
       - run: pytest -q
-      - run: node --check frontend/app.js && node --check frontend/demo.js && node --check tests/browser/checklist.cjs && node --check tests/browser/record-showcase.cjs
+      - run: node --check frontend/app.js && node --check frontend/demo.js && node --check tests/browser/checklist.cjs && node --check tests/browser/record-showcase.cjs && node --check tests/browser/record-company-brain.cjs && python -m py_compile tests/browser/render-company-brain.py
   falkordb:
     runs-on: ubuntu-latest
     services:

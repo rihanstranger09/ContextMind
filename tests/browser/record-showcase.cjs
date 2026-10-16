@@ -61,7 +61,7 @@ const hold = ms => new Promise(resolve => setTimeout(resolve, ms));
     await page.locator('#modal[open]').waitFor();
     await hold(8000);
     await page.locator('#close-modal').click();
-    await page.locator('#conversation summary').click();
+    await page.locator('#conversation details:not(.tool-steps) summary').click();
     await hold(10000);
     await page.locator('#new-chat').click();
     await ask('What is FalkorDB annual revenue?');
