@@ -1,6 +1,6 @@
 # Native FalkorDB presentation runbook
 
-A **narrated, captioned local take** can be rendered to ignored `deliverables/contextmind-falkordb-presenting-video.mp4`; it was recorded against a native local FalkorDB module, **not** a cloud instance or a published deployment. Use a native database in the final video: the public GitHub dataset and the storage engine are separate things. Never call the JSON preview “running on FalkorDB.” Do not display `.env.txt`, passwords, connection strings, cloud consoles, or private graphs on camera.
+A **narrated, captioned local take** is available as [a downloadable MP4](../presentation/ContextMind-FalkorDB-demo.mp4); it was recorded against a native local FalkorDB module, **not** a cloud instance or a published deployment. Raw footage, narration clips and intermediates are kept out of Git under ignored `deliverables/`. Use a native database in the final video: the public GitHub dataset and the storage engine are separate things. Never call the JSON preview “running on FalkorDB.” Do not display `.env.txt`, passwords, connection strings, cloud consoles, or private graphs on camera.
 
 ## Rehearsal (local, no cloud credentials)
 
