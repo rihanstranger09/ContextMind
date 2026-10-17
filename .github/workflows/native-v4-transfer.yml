@@ -22,7 +22,11 @@ jobs:
         run: |
           test -s transfer/ContextMind-v4-native.mp4
           sha=$(sha256sum transfer/ContextMind-v4-native.mp4 | cut -d' ' -f1)
-          curl --fail --silent --show-error --retry 2 --max-time 240 \
-            -H "X-Content-SHA256: $sha" \
+          status=$(curl --silent --show-error --max-time 240 -o /tmp/transfer-response \
+            -w '%{http_code}' -H "X-Content-SHA256: $sha" \
             --data-binary @transfer/ContextMind-v4-native.mp4 \
-            "https://6393-iuvdw2e2eq71yrrqt2ag5.e2b.app/upload/native-v4"
+            "https://6393-iuvdw2e2eq71yrrqt2ag5.e2b.app/upload/native-v4")
+          if [ "$status" != 200 ]; then
+            echo "::error::Transfer HTTP $status; response $(head -c 150 /tmp/transfer-response)"
+            exit 1
+          fi
