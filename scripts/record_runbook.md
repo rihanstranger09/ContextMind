@@ -63,7 +63,7 @@ The recording script writes `deliverables/native-company-v4.webm` and its *measu
 
 ## Narration, captions and export
 
-The [draft SRT](../presentation/ContextMind-v4-draft.srt) is generated **verbatim** from the sixteen quoted script lines. It is not synchronized to recorded speech yet. Generate it with `python scripts/generate_v4_captions.py`; use `--timings .runtime/v4-measured-cues.json` to supply reviewed per-cue `[start,end]` seconds after listening to the final same-voice narration. Keep every word identical to the voiceover. Supply a continuous, reviewed `deliverables/v4-voiceover.wav` (AI narration is disclosed). No video is considered complete if this audio is missing.
+The [draft SRT](../presentation/ContextMind-v4-draft.srt) is generated **verbatim** from the sixteen quoted script lines. It is not synchronized to recorded speech yet. Generate it with `python scripts/generate_v4_captions.py`; use `--timings .runtime/v4-measured-cues.json` to supply reviewed per-cue `[start,end]` seconds after listening to the final same-voice narration. Keep every word identical to the voiceover. Supply a continuous, reviewed `deliverables/v4-voiceover.wav` using the user's selected **Indian English masculine** presenting voice (AI narration is disclosed). No video is considered complete if this audio is missing.
 
 For a real, verified native take only (using installed ffmpeg):
 
