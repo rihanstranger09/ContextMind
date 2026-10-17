@@ -29,6 +29,16 @@ def test_native_graph_provenance_replay_and_privacy(monkeypatch):
         after_counts=c.counts()
         assert after_counts['nodes']==counts['nodes']+1
         assert after_counts['relationships']==counts['relationships']+1
+        # Mock only the provider. The agent tool executes real native FalkorDB reads.
+        from agents.llm_agent import LiveAgent
+        from tests.test_live_agent import FakeLLM, message
+        fake=FakeLLM(message(calls=[('shortest_path', {'source_entity':'Alice Johnson',
+                  'target_entity':'Database Cluster'})]),
+                  message(content='Alice reaches the cluster through the gateway [E1].'))
+        live=LiveAgent(c, fake).ask('How is Alice Johnson connected to Database Cluster?')
+        assert live['agent_mode']=='openai_tool_calling' and live['answer'].endswith('[E1].')
+        assert [edge['type'] for edge in live['graph_trace'][0]['edges']]==['WORKED_ON','DEPENDS_ON']
+        assert c.get(live['id'])['tool_steps'][0]['tool']=='shortest_path'
         assert s.query('MATCH (o:Organization)-[:OWNS]->(r:Repository) RETURN count(r)')[0][0]>100
         proof=graph_showcase(s)
         assert proof['backend']=='falkordb' and proof['native_cypher_executed']
