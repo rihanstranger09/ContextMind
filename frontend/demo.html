@@ -36,8 +36,19 @@
     <li><strong>Sources:</strong> open a source card to see its excerpt and timestamp.</li>
     <li><strong>Trace:</strong> click a Path citation or expand “Why this answer?” to inspect the relationships supporting the answer.</li>
   </ol>
+  <section id="graph-demo" hidden>
+    <h2>On camera: prove FalkorDB is the engine</h2>
+    <p id="proof-readiness" role="status">Checking whether this is a native FalkorDB run…</p>
+    <ol>
+      <li><strong>0:00–0:20 — Show the native backend.</strong> Start the public workspace in <code>GRAPH_BACKEND=falkordb</code> mode. Confirm both the health line above and the dashboard sidebar say FalkorDB storage. A JSON run is a preview, not native proof.</li>
+      <li><strong>0:20–0:55 — Run the proof.</strong> Click <strong>FALKORDB PROOF</strong> in the dashboard header. Show the green “NATIVE FALKORDB · CYPHER EXECUTED” status, fixed Cypher query, stored graph counts, two-hop organization → Python client → release paths, and the linked GitHub release source. This is a real database traversal, not a screenshot or arbitrary user-supplied Cypher.</li>
+      <li><strong>0:55–1:25 — Ask a grounded question.</strong> Ask “How do I use FalkorDB with LangChain?” Open a cited source and expand “Why this answer?” to show relationship evidence; the UI is powered by the same graph-backed store.</li>
+      <li><strong>1:25–1:45 — Show restraint.</strong> Ask “What is FalkorDB annual revenue?” The app should say it lacks evidence rather than inventing a number. Say explicitly that the public dataset is a bounded GitHub snapshot, not live internal company data.</li>
+    </ol>
+    <p class="note">Do not show passwords, hostnames, private data, or a cloud console in the recording. If the readiness line does not say native, set up the local FalkorDB service first. The proof endpoint is read-only; ordinary app startup may seed empty graph names. See <code>docs/presenter-runbook.md</code> in the repository for setup and honest claims.</p>
+  </section>
   <div class="actions"><a class="primary" href="/dashboard">Open Dashboard →</a><a href="/api/health">API status</a><a href="/docs">API documentation</a></div>
-  <p class="note">Demo mode uses JSON storage; FalkorDB mode uses the database. The status above reports the actual mode. Answers use deterministic graph tools, not an LLM. NovaPay and its source URLs are fictional. Do not upload confidential data.</p>
+  <p class="note">Demo mode uses JSON storage; FalkorDB mode uses the database. The status above reports the actual mode. NovaPay uses a live model-selected tool-calling agent only if health reports openai_tool_calling and the key is configured; otherwise responses are deterministic. The public workspace stays deterministic. NovaPay and its source URLs are fictional. Do not upload confidential data.</p>
 </main>
 <script src="/demo.js"></script>
 </body></html>

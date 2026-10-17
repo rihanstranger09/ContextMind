@@ -83,6 +83,31 @@ function url(route) { return new URL(route, base).href; }
       if (new URL(page.url()).searchParams.get('workspace') !== workspace) await page.waitForURL('**/dashboard?workspace=' + workspace);
       await ready(workspace);
       passed('Header workspace selector', workspace);
+      await page.locator('#graph-model').click();
+      assert((await page.locator('#modal-content').innerText()).includes(workspace === 'novapay' ? 'BASED_ON' : 'CONTRIBUTES_TO'));
+      await page.locator('#close-modal').click();
+      passed('Graph schema visible and correctly scoped', workspace);
+      if (workspace === 'novapay') {
+        await page.locator('#graph-proof').click();
+        await page.locator('#modal[open] .proof-state').waitFor();
+        assert((await page.locator('.proof-state').innerText()).includes(report.storage === 'falkordb' ? 'SECOND CYPHER QUERY EXECUTED' : 'CYPHER NOT EXECUTED'));
+        assert((await page.locator('.proof-query').innerText()).includes('BASED_ON'));
+        await page.locator('#close-modal').click();
+        passed('Decision provenance Cypher proof is native or honestly a preview', workspace);
+      }
+      if (workspace === 'falkordb') {
+        assert.equal(await page.locator('.nav[data-page="decisions"]').count(), 0, 'Do not present zero verified public decisions');
+        await page.locator('#graph-proof').click();
+        await page.locator('#modal[open] .proof-state').waitFor({state: 'visible'});
+        const badge = await page.locator('.proof-state').innerText();
+        assert(badge.includes(report.storage === 'falkordb' ? 'CYPHER EXECUTED' : 'CYPHER NOT EXECUTED'));
+        assert((await page.locator('.proof-query').innerText()).includes('MATCH (org:Entity'));
+        assert.equal(await page.locator('.proof-path').count(), 3);
+        assert((await page.locator('.proof-path').first().innerText()).includes('FalkorDB/falkordb-py'));
+        assert((await page.locator('.proof-path a').first().getAttribute('href')).startsWith('https://github.com/'));
+        await page.locator('#close-modal').click();
+        passed('Graph proof honestly reports native Cypher or JSON preview', workspace);
+      }
       const question = workspace === 'novapay' ? 'Who owns Database Cluster?' : 'How do I use FalkorDB with LangChain?';
       await page.locator('#question').click();
       assert(await page.locator('#question').evaluate(el => el === document.activeElement));
@@ -90,6 +115,20 @@ function url(route) { return new URL(route, base).href; }
       assert.equal(await page.locator('#question').inputValue(), question);
       passed('Input focus and typing', workspace);
       await answer(workspace, () => page.locator('#send').click(), question);
+      if (workspace === 'novapay') {
+        assert(await page.locator('.tool-steps').count() === 1);
+        await page.locator('.tool-steps summary').click();
+        assert(await page.locator('.tool-steps li').count() >= 2);
+        await page.reload({waitUntil:'networkidle'}); await ready(workspace);
+        assert(await page.locator('#history button').count() > 0, 'Investigation must survive page reload');
+        await page.locator('#history button').first().click();
+        await page.waitForFunction(() => document.querySelector('#modal-content')?.textContent.includes('Persisted tool and evidence trace'));
+        assert((await page.locator('#modal-content').innerText()).includes('Persisted tool and evidence trace'));
+        await page.locator('#close-modal').click();
+        await page.locator('#question').fill(question);
+        await answer(workspace, () => page.locator('#send').click(), question);
+        passed('Persisted memory and observable tool routing', workspace);
+      }
       passed('Send button submits typed query and renders answer', workspace);
       assert(await page.locator('.source-card').count() > 0);
       await page.locator('.source-card').first().click();
@@ -97,7 +136,7 @@ function url(route) { return new URL(route, base).href; }
       assert((await page.locator('#modal-content').innerText()).includes('Source ID:'));
       if (workspace === 'falkordb') assert((await page.locator('#modal-content a').first().getAttribute('href')).startsWith('https://github.com/'));
       await page.locator('#close-modal').click();
-      await page.locator('#conversation summary').click();
+      await page.locator('#conversation details:not(.tool-steps) summary').click();
       assert(await page.locator('#conversation details[open] li').count() > 0);
       await page.locator('[data-trace]').first().click();
       assert((await page.locator('#modal-content pre').innerText()).includes('source'));
@@ -118,10 +157,23 @@ function url(route) { return new URL(route, base).href; }
       await page.locator('#question').fill(question);
       await answer(workspace, () => page.locator('#question').press('Enter'), question);
       passed('Enter submits', workspace);
+      if(workspace==='novapay'){
+        const q='What is the shortest path from Alice Johnson to Database Cluster?';
+        await page.locator('#question').fill(q);
+        const r=await answer(workspace,()=>page.locator('#send').click(),q);
+        assert.equal(r.intent,'connection');
+        assert.deepEqual(r.graph_trace[0].edges.map(e=>e.type),['WORKED_ON','DEPENDS_ON']);
+        assert.equal(await page.locator('#graph .graph-node').count(),3);
+        passed('Bounded shortest-path tool and ordered path visualization',workspace);
+      }
 
       for (let i = 0; i < 5; i++) {
         await page.goto(url('/demo.html?workspace=' + workspace), {waitUntil: 'networkidle'});
         await page.waitForFunction(() => document.querySelector('#health').textContent.startsWith('Healthy'));
+        if (workspace === 'falkordb') {
+          const readiness = await page.locator('#proof-readiness').innerText();
+          assert(readiness.includes(report.storage === 'falkordb' ? 'READY FOR NATIVE RECORDING' : 'PREVIEW ONLY'));
+        }
         const demoLink = page.locator('#questions a').nth(i);
         const demoQuestion = await demoLink.innerText();
         await demoLink.click();

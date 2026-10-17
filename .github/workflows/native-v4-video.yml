@@ -1,0 +1,117 @@
+name: Guarded native Company Brain video
+on:
+  push:
+    branches: [arena/bac5286a-contextmind]
+    paths:
+      - '.github/workflows/native-v4-video.yml'
+      - 'scripts/render_v4.py'
+      - 'scripts/narration-v4/**'
+  workflow_dispatch:
+    inputs:
+      upload_url:
+        description: 'Optional one-time external transfer URL; never stored in source or logs'
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  native-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install recorded-project dependencies and encoder
+        run: |
+          pip install -r requirements.txt imageio-ffmpeg
+          npm ci --prefix tests/browser
+          python - <<'PY'
+          import imageio_ffmpeg,os
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'ms-playwright/ffmpeg-1013/ffmpeg-linux'
+          path.parent.mkdir(parents=True,exist_ok=True)
+          path.symlink_to(imageio_ffmpeg.get_ffmpeg_exe())
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('PLAYWRIGHT_BROWSERS_PATH='+str(path.parents[1])+'\n')
+          PY
+      - name: Generate disposable native graph name and private operator credential
+        run: |
+          python - <<'PY'
+          import os,secrets
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('FALKOR_GRAPH=contextmind_video_'+secrets.token_hex(8)+'\n')
+              f.write('INGEST_TOKEN='+secrets.token_urlsafe(32)+'\n')
+          PY
+      - name: Start native FalkorDB and app
+        run: docker compose up --build -d
+      - name: Await both native proofs
+        run: |
+          python - <<'PY'
+          import json,time,urllib.request
+          base='http://127.0.0.1:8000'
+          for attempt in range(60):
+              try:
+                  ok=all(json.load(urllib.request.urlopen(base+'/api/health?workspace='+w,timeout=3))['graph_mode']=='falkordb'
+                         for w in ('novapay','falkordb'))
+                  if ok:break
+              except Exception:pass
+              time.sleep(3)
+          else:raise SystemExit('Both native workspaces did not become ready')
+          for path in ('company-proof?workspace=novapay','showcase?workspace=falkordb'):
+              proof=json.load(urllib.request.urlopen(base+'/api/graph/'+path,timeout=15))
+              if not proof['native_cypher_executed']:raise SystemExit('Native proof unavailable')
+          print('Both fixed proofs executed natively')
+          PY
+      - name: Check every shot claim on first disposable graph
+        run: CHROMIUM_BUNDLED_LIBS=1 VIDEO_INGEST_TOKEN="$INGEST_TOKEN" node scripts/check_video_states.cjs
+      - name: Choose a NEW disposable graph for actual recording
+        run: |
+          python - <<'PY'
+          import os,secrets
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('FALKOR_GRAPH=contextmind_video_'+secrets.token_hex(8)+'\n')
+          PY
+      - name: Recreate app on fresh native graph
+        run: |
+          docker compose up -d --force-recreate app
+          python - <<'PY'
+          import json,time,urllib.request
+          for attempt in range(40):
+              try:
+                  h=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/health?workspace=novapay',timeout=3))
+                  if h['graph_mode']=='falkordb' and h['status']=='healthy':break
+              except Exception:pass
+              time.sleep(3)
+          else:raise SystemExit('Fresh recording graph did not become ready')
+          PY
+      - name: Record native dashboard and two real operator writes
+        run: CHROMIUM_BUNDLED_LIBS=1 VIDEO_INGEST_TOKEN="$INGEST_TOKEN" node scripts/record_v4.cjs
+      - name: Mix selected narration, burn verbatim captions and verify MP4
+        run: python scripts/render_v4.py
+      - name: Upload independent review artifact, NOT repository content
+        uses: actions/upload-artifact@v4
+        with:
+          name: ContextMind-v4-native-review
+          path: |
+            deliverables/ContextMind-v4-native.mp4
+            deliverables/ContextMind-v4-reviewed.srt
+            deliverables/native-company-v4-timeline.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Optional one-time transfer outside GitHub (no tokens in video or logs)
+        if: ${{ inputs.upload_url != '' }}
+        env:
+          VIDEO_UPLOAD_URL: ${{ inputs.upload_url }}
+        run: |
+          case "$VIDEO_UPLOAD_URL" in https://6393-*.e2b.app/upload/*) ;; *) echo 'Invalid transfer destination'; exit 1;; esac
+          sha=$(sha256sum deliverables/ContextMind-v4-native.mp4 | cut -d' ' -f1)
+          curl --fail --silent --show-error --retry 2 --max-time 240 \
+            -H "X-Content-SHA256: $sha" --data-binary @deliverables/ContextMind-v4-native.mp4 "$VIDEO_UPLOAD_URL"
+      - name: Remove disposable native graphs
+        if: always()
+        run: docker compose down -v

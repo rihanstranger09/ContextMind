@@ -1,6 +1,8 @@
 services:
   falkordb:
-    image: falkordb/falkordb:v4.12.0
+    image: falkordb/falkordb:latest
+    # Local host tooling only; never bind the database to a public interface.
+    ports: ["127.0.0.1:6380:6379"]
     volumes:
       - graph_data:/data
     healthcheck:
@@ -14,7 +16,13 @@ services:
     environment:
       GRAPH_BACKEND: falkordb
       FALKOR_HOST: falkordb
-      INGEST_TOKEN: ${INGEST_TOKEN:-local-demo-token}
+      # Bundled FalkorDB has no password. Nonempty values must not be silently ignored.
+      FALKOR_PASSWORD: ${FALKORDB_PASSWORD:-}
+      FALKOR_GRAPH: ${FALKOR_GRAPH:-contextmind}
+      INGEST_TOKEN: ${INGEST_TOKEN:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-disabled}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MODEL_NAME: ${MODEL_NAME:-gpt-4o-mini}
     depends_on:
       falkordb:
         condition: service_healthy

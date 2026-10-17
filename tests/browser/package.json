@@ -1,6 +1,6 @@
 {
   "name": "contextmind-browser-checks",
   "private": true,
-  "scripts": {"test": "node checklist.cjs"},
+  "scripts": {"test": "node checklist.cjs", "record": "node record-showcase.cjs", "record:company": "node record-company-brain.cjs"},
   "devDependencies": {"playwright": "1.64.0", "@sparticuz/chromium": "153.0.0"}
 }

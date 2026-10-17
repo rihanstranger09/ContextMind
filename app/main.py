@@ -12,8 +12,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel,Field
 from graph.store import Store
 from graph.tools import Tools
+from graph.showcase import graph_showcase, company_showcase
 from agents.company_brain import Agent
 from agents.public_brain import PublicAgent
+from app.config import llm_config
+from agents.llm_agent import LiveAgent
 
 @asynccontextmanager
 async def lifespan(app):
@@ -52,7 +55,9 @@ class Record(BaseModel):
 def health(workspace:Workspace="novapay"):
     metadata = dict(version=VERSION, graph_mode=store(workspace).backend,
                     sample_data='NovaPay' if workspace=='novapay' else None, backend=store(workspace).backend, company='NovaPay' if workspace=='novapay' else 'FalkorDB', workspace=workspace,
-                    fictional_data=workspace=='novapay', synthesis='deterministic graph evidence')
+                    fictional_data=workspace=='novapay',
+                    synthesis=('openai_tool_calling' if workspace=='novapay' and llm_config()['provider']=='openai' else 'deterministic graph evidence'),
+                    llm_configured=bool(llm_config()['api_key']) if workspace=='novapay' and llm_config()['provider']=='openai' else False)
     try:
         if not store(workspace).get('sys_database' if workspace=='novapay' else 'org_falkordb'):
             raise RuntimeError('Seed data unavailable')
@@ -68,8 +73,33 @@ def dashboard():
 def entities(q:str='',type:str|None=None,workspace:Workspace='novapay'): return store(workspace).search(q,type)
 @app.get('/api/entities/{id}')
 def entity(id:str,workspace:Workspace='novapay'): return require_entity(id,workspace)
+@app.get('/api/investigations')
+def investigations(limit:int=Query(10,ge=1,le=20),workspace:Workspace='novapay'):
+    if workspace!='novapay': return []
+    return [dict(id=n['id'],question=n['question'],intent=n.get('intent','knowledge'),updated_at=n['updated_at']) for n in store().recent_investigations(limit)]
 @app.post('/api/chat')
-def chat(body:Question,workspace:Workspace='novapay'): return brain(workspace).ask(body.question)
+def chat(body:Question,workspace:Workspace='novapay'):
+    cfg = llm_config()
+    if workspace == 'novapay' and cfg['provider'] == 'openai':
+        if store(workspace).backend != 'falkordb':
+            raise HTTPException(503, 'Live agent requires native FalkorDB; JSON preview is not a native demo')
+        if not cfg['api_key']:
+            raise HTTPException(503, 'Live agent is selected but OPENAI_API_KEY is not configured')
+        from openai import OpenAI, AuthenticationError, RateLimitError, APITimeoutError
+        try:
+            return LiveAgent(store(workspace), OpenAI(api_key=cfg['api_key'], max_retries=1), cfg['model']).ask(body.question)
+        except AuthenticationError:
+            raise HTTPException(503, 'LLM authentication failed; check your local secret') from None
+        except RateLimitError:
+            raise HTTPException(503, 'LLM rate limit or quota reached') from None
+        except APITimeoutError:
+            raise HTTPException(503, 'LLM request timed out') from None
+        except Exception:
+            # SDK errors can include request details: do not reflect them into HTTP or logs.
+            raise HTTPException(503, 'LLM service unavailable; no deterministic answer substituted') from None
+    result = brain(workspace).ask(body.question)
+    result['agent_mode'] = 'deterministic'
+    return result
 @app.post('/api/impact')
 def impact(body:Impact,workspace:Workspace='novapay'):
     n=require_entity(body.system_id,workspace)
@@ -82,6 +112,16 @@ def experts(id:str,workspace:Workspace='novapay'):
     return Tools(store(workspace)).find_experts(id)
 @app.get('/api/decisions/{id}/trace')
 def decision(id:str,workspace:Workspace='novapay'): require_entity(id,workspace); return Tools(store(workspace)).explain_decision(id)
+@app.get('/api/graph/showcase')
+def showcase(workspace:Workspace='falkordb'):
+    if workspace != 'falkordb': raise HTTPException(422,'Graph proof uses the public FalkorDB snapshot')
+    return graph_showcase(store(workspace))
+
+@app.get('/api/graph/company-proof')
+def company_proof(workspace:Workspace='novapay'):
+    if workspace!='novapay': raise HTTPException(422,'Decision proof uses the fictional company graph')
+    return company_showcase(store(workspace))
+
 @app.get('/api/graph/subgraph')
 def subgraph(entity_id:str|None=None,depth:int=Query(2,ge=0,le=3),workspace:Workspace='novapay'):
     entity_id=entity_id or ('org_falkordb' if workspace=='falkordb' else 'sys_database')
@@ -114,7 +154,7 @@ def ingest(kind:str,body:Record,authorization:str=Header(default=''),workspace:W
         if existing and existing!=desired: raise HTTPException(409,'Relationship replacement is not supported in this MVP; preserve existing targets')
     n=body.model_dump(mode='json'); n.update(type=types[kind],source='manual',last_synced_at=datetime.now(timezone.utc).isoformat(),content_hash=hashlib.sha256(json.dumps(n,sort_keys=True).encode()).hexdigest())
     store().upsert(n,edges)
-    return dict(record=n,created=current is None)
+    return dict(record=n,created=current is None,graph_counts=store().counts())
 @app.get('/api/workspaces')
 def workspaces():
     return [dict(id='novapay',name='NovaPay',mode='fictional sandbox'),

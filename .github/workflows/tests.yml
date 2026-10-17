@@ -15,7 +15,7 @@ jobs:
           node-version: '22'
       - run: pip install -r requirements.txt
       - run: pytest -q
-      - run: node --check frontend/app.js && node --check frontend/demo.js
+      - run: node --check frontend/app.js && node --check frontend/demo.js && node --check frontend/recording-evidence.js && node --check tests/browser/checklist.cjs && node --check tests/browser/recording-evidence.cjs && node --check tests/browser/record-showcase.cjs && node --check tests/browser/record-company-brain.cjs && node --check scripts/check_video_states.cjs && node --check scripts/record_v4.cjs && python -m py_compile tests/browser/render-company-brain.py scripts/seed_demo_graph.py scripts/generate_v4_captions.py
   falkordb:
     runs-on: ubuntu-latest
     services:
@@ -36,3 +36,35 @@ jobs:
       - run: pytest -q tests/test_falkordb_integration.py
         env:
           FALKOR_INTEGRATION: '1'
+  compose-clean-machine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Follow README native Compose quick start
+        run: docker compose up --build -d
+      - name: Check both native workspaces and fixed Cypher proofs
+        run: |
+          python - <<'PY'
+          import json,time,urllib.request
+          base='http://127.0.0.1:8000'
+          for attempt in range(60):
+              try:
+                  data=[json.load(urllib.request.urlopen(base+'/api/health?workspace='+w, timeout=3))
+                        for w in ('novapay','falkordb')]
+                  if all(d['status']=='healthy' and d['graph_mode']=='falkordb' for d in data):break
+              except Exception:
+                  pass
+              time.sleep(3)
+          else:raise SystemExit('Native Compose startup failed both health checks')
+          for path in ('/api/graph/company-proof?workspace=novapay','/api/graph/showcase?workspace=falkordb'):
+              proof=json.load(urllib.request.urlopen(base+path, timeout=10))
+              if not proof['native_cypher_executed']:
+                  raise SystemExit('Compose proof is not native Cypher: '+path)
+          print('PASS clean checkout + Docker Compose + two native proof endpoints')
+          PY
+      - name: Full offline suite inside Compose app
+        run: docker compose exec -T app pytest -q
+      - name: Stop disposable graphs
+        if: always()
+        run: docker compose down -v
