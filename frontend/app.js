@@ -77,7 +77,7 @@ async function showCompanyProof(){
     $('#modal-content').innerHTML=`<div class="proof-state ${p.native_cypher_executed?'native':'preview'}">${p.native_cypher_executed?'● NATIVE FALKORDB · SECOND CYPHER QUERY EXECUTED':'○ JSON PREVIEW · CYPHER NOT EXECUTED'}</div>
       <p><strong>${esc(p.decision)}</strong> impacts ${esc(p.project)}. The rationale is backed by four linked records across tickets, chat, meeting and documentation. NovaPay and its data are fictional.</p>
       <h3>Decision → evidence and impacted project</h3><pre class="proof-query">${esc(p.cypher)}</pre>
-      <div class="proof-path">${p.evidence.map(e=>`<div>BASED_ON → <strong>${esc(e.name)}</strong> · ${esc(e.type)}${e.status?' · '+esc(e.status):''}</div>`).join('')}</div>
+      <div class="proof-path company-proof-evidence">${p.evidence.map(e=>`<div>BASED_ON → <strong>${esc(e.name)}</strong> · ${esc(e.type)}${e.status?' · '+esc(e.status):''}</div>`).join('')}</div>
       <p class="proof-foot">This is a fixed read-only query. Inspect the answer trace for more relationship context; no unsupported public FalkorDB decisions are inferred.</p>`;
   }catch(e){$('#modal-content').innerHTML='<p class="error">Decision proof unavailable: '+esc(e.message)+'</p>'}
 }
