@@ -1,0 +1,27 @@
+name: One-time artifact extraction diagnostic
+on:
+  push:
+    branches: [arena/bac5286a-contextmind]
+    paths: ['.github/workflows/native-v4-extract.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ContextMind-v4-native-review
+          run-id: 39019103685
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: transfer
+      - name: Test non-repository transport capacity
+        run: |
+          python - <<'PY'
+          import base64, pathlib
+          data=pathlib.Path('transfer/ContextMind-v4-native.mp4').read_bytes()
+          print('::notice title=Native-video-diagnostic::'+base64.b64encode(data[:24000]).decode())
+          print('::notice title=Native-video-diagnostic-two::'+base64.b64encode(data[24000:69000]).decode())
+          PY
