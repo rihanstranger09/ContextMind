@@ -5,6 +5,22 @@
 
 **Good questions. Connected answers.** ContextMind is an evidence-first prototype for the **Company Brain** track. It connects a **fictional** fintech company's people, teams, projects, systems, tickets, chats and decisions in a typed graph. Ask what breaks when a service fails, who owns it, or why a migration was delayed; inspect the stored relationships and sources behind each bounded answer. The separate public workspace is a captured GitHub snapshot, **not a live feed**. This repository uses **complete local setup**, not a verified live deployment.
 
+## Run the live Company Brain agent locally (three steps)
+
+Requires Docker Compose, Python 3.11+ (3.12 recommended), and an OpenAI account with access to a function-calling model. The NovaPay records are **fictional**. No deployment or live provider call has been verified by this repository's CI.
+
+1. `cp .env.example .env` — put your own `OPENAI_API_KEY` in this ignored file. Leave `LLM_PROVIDER=openai`, `MODEL_NAME=gpt-4o-mini`, and `FALKORDB_PASSWORD=` blank for the bundled local database. Never commit or paste credentials into a demo. The Compose database is exposed to your machine at `localhost:6380` only; inside Docker the app connects to `falkordb:6379`.
+2. `docker compose up --build -d` — builds the Python backend/frontend container, starts native FalkorDB, and automatically seeds the NovaPay and bounded public workspaces **only if their isolated graphs are empty**. `docker compose up -d` works after the first build. You can run `python -m backend.seed` from a host Python environment with installed requirements, or `docker compose exec app python -m backend.seed` to verify both native graphs.
+3. Open **http://localhost:8000/dashboard?workspace=novapay** (FastAPI serves the frontend; no Node service). Check [health](http://localhost:8000/api/health): `graph_mode: falkordb`, `synthesis: openai_tool_calling`, `llm_configured: true`. Ask “Who owns Database Cluster?” and expand **Tools used**. The model must request `find_owner`; the server executes bounded FalkorDB reads; the answer cites recorded path IDs such as `[E1]`. `docker compose logs app` can help diagnose startup, but do not print `.env` or request headers.
+
+Alternative host launch after step 2: `docker compose stop app`, `python -m venv .venv && .venv/bin/pip install -r requirements.txt`, then `.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000`. The `.env` loader supplies local `FALKORDB_HOST=localhost` and `FALKORDB_PORT=6380`. The frontend is served by FastAPI at the same origin. A separate helper, `./scripts/local-start.sh`, performs steps 1–2 once `.env` exists.
+
+**What is live:** In NovaPay native mode, the standard OpenAI function-calling SDK asks for one or more of `find_owner`, `get_decision_provenance`, `impact_analysis`, or `shortest_path`. The server validates all inputs, resolves exact graph names/IDs, executes only fixed read tools with bounded traversal and parameterized graph reads, returns graph records/paths to the model, then checks its cited evidence IDs before exposing an answer. No arbitrary Cypher, ingestion, secrets, or cross-workspace reads are available to the model. At most four tool calls, timeout, output limit, and explicit no-evidence abstention apply; malformed/unavailable model responses never silently fall back. `LLM_PROVIDER=disabled` explicitly restores the earlier deterministic router, labeled as such in health, UI and API; the public GitHub-snapshot workspace remains deterministic. Do not treat keyword routing as LLM planning.
+
+**Security/verification limits:** This is a local fictional-data prototype with no user authentication, rate limits, or per-user permissions. Do not expose it to sensitive networks or enter real company data. Citation-ID validation and graph-grounded tool results reduce, but cannot eliminate, unsupported model wording or prompt injection; visually review all outputs. CI uses mock model calls and a fake FalkorDB client; no API key is stored or live provider request made in CI. This sandbox cannot reach OpenAI hosts or run Docker, so a real end-to-end provider call needs your local machine. The existing v4 native video was recorded **before** this integration and explicitly says “No LLM is wired in”; it must **not** be used as proof of the new agent. Record and verify a fresh native + live-provider take before making that claim in judging.
+
+For an external FalkorDB host, run the Python app locally with `.env` pointing to that host and use `FALKOR_URL=rediss://...` **instead of** individual Falkor variables (remove those lines first). Use TLS with certificate checking; do not point the unauthenticated app at a production graph.
+
 ## New: FalkorDB public-data workspace
 
 Use the dashboard workspace selector to switch between **NovaPay (fictional sandbox)** and **FalkorDB (real public GitHub snapshot)**. Open `/dashboard?workspace=falkordb` or `/demo.html?workspace=falkordb` for the builder walkthrough.
@@ -163,8 +179,8 @@ flowchart LR
 
 ```text
 Question (same-origin dashboard/API)
-    → deterministic entity/intent router (no LLM)
-    → allowlisted bounded graph tools (impact, ownership, decision, shortest path)
+    → NovaPay: configured OpenAI function caller (or labeled deterministic fallback)
+    → validated allowlisted read-only graph tools (impact, ownership, decision, shortest path)
     → FalkorDB parameterized adjacency reads + fixed Cypher proofs
     → cited answer + persisted AgentDecision / USED_EVIDENCE trace
 ```
@@ -180,7 +196,7 @@ The [architecture card](frontend/architecture.html) depicts this executed path. 
 - **`app/main.py`**: validated HTTP API, write token checks, static frontend.
 - **`data/sample_company.json`**: fictional NovaPay company graph; regenerate with `python data/generate.py`.
 
-**No LLM is wired in yet.** Answer synthesis is deterministic and supported intents are keyword-based. The Tools used panel shows actual rule-selected graph tools, not an autonomous planner. AI coding assistants helped build and test this repository and generate the demonstration narration; see [AI disclosure and eligibility checklist](docs/submission-checklist.md). The frontend shows evidence paths, not hidden chain-of-thought. This makes the demo reproducible and avoids fabricated company facts. The tools operate through FalkorDB reads in database mode; the graph is not merely a visualization layer. An LLM integration should receive only these bounded facts, excerpts, and paths, never the entire graph or permission to execute arbitrary Cypher.
+**In the historical v4 recording, “No LLM is wired in” was true.** The current NovaPay app supports live OpenAI function calling when explicitly configured; without it, responses remain deterministic. The Tools used panel labels actual model-requested or rule-selected calls by mode. AI coding assistants helped build and test this repository and generate the demonstration narration; see [AI disclosure and eligibility checklist](docs/submission-checklist.md). The frontend shows evidence paths, not hidden chain-of-thought. This makes the demo reproducible and avoids fabricated company facts. The tools operate through FalkorDB reads in database mode; the graph is not merely a visualization layer. An LLM integration should receive only these bounded facts, excerpts, and paths, never the entire graph or permission to execute arbitrary Cypher.
 
 ### Expertise scoring
 
@@ -247,7 +263,7 @@ This repository began as an earlier prototype; the current branch adds cloud-con
 
 ## AI assistance disclosure
 
-AI coding assistants in **Arena.ai Agent Mode** helped implement and test code, review documentation, draft video scripts and generate the earlier AI-narrated demonstration. The product itself has **no LLM wired in**: question routing and synthesis are deterministic. The human author must personally review this code, graph model, Cypher, architecture and output, and be able to explain them before declaring that review complete in the submission form. Human review and event eligibility have **not** been independently verified here; do not claim otherwise.
+AI coding assistants in **Arena.ai Agent Mode** helped implement and test code, review documentation, draft video scripts and generate the earlier AI-narrated demonstration. The historical narrated v4 video used a deterministic router; the current product can use a live OpenAI function-calling agent for NovaPay when configured, while public-snapshot mode remains deterministic. The human author must personally review this code, graph model, Cypher, architecture and output, and be able to explain them before declaring that review complete in the submission form. Human review and event eligibility have **not** been independently verified here; do not claim otherwise.
 
 ## Submission media status
 

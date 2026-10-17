@@ -1,6 +1,6 @@
 services:
   falkordb:
-    image: falkordb/falkordb:v4.12.0
+    image: falkordb/falkordb:latest
     # Local host tooling only; never bind the database to a public interface.
     ports: ["127.0.0.1:6380:6379"]
     volumes:
@@ -18,6 +18,9 @@ services:
       FALKOR_HOST: falkordb
       FALKOR_GRAPH: ${FALKOR_GRAPH:-contextmind}
       INGEST_TOKEN: ${INGEST_TOKEN:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-disabled}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MODEL_NAME: ${MODEL_NAME:-gpt-4o-mini}
     depends_on:
       falkordb:
         condition: service_healthy
