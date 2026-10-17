@@ -16,6 +16,8 @@ services:
     environment:
       GRAPH_BACKEND: falkordb
       FALKOR_HOST: falkordb
+      # Bundled FalkorDB has no password. Nonempty values must not be silently ignored.
+      FALKOR_PASSWORD: ${FALKORDB_PASSWORD:-}
       FALKOR_GRAPH: ${FALKOR_GRAPH:-contextmind}
       INGEST_TOKEN: ${INGEST_TOKEN:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-disabled}
