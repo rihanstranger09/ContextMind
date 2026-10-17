@@ -1,0 +1,28 @@
+name: One-time native video transfer
+on:
+  push:
+    branches: [arena/bac5286a-contextmind]
+    paths: ['.github/workflows/native-v4-transfer.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch verified native artifact from the successful recording run
+        uses: actions/download-artifact@v4
+        with:
+          name: ContextMind-v4-native-review
+          run-id: 39019103685
+          github-token: ${{{{ secrets.GITHUB_TOKEN }}}}
+          path: transfer
+      - name: Send the checked MP4 to the separate workspace, not Git history
+        run: |
+          test -s transfer/ContextMind-v4-native.mp4
+          sha=$(sha256sum transfer/ContextMind-v4-native.mp4 | cut -d' ' -f1)
+          curl --fail --silent --show-error --retry 2 --max-time 240 \
+            -H "X-Content-SHA256: $sha" \
+            --data-binary @transfer/ContextMind-v4-native.mp4 \
+            "https://6393-iuvdw2e2eq71yrrqt2ag5.e2b.app/upload/native-v4"
