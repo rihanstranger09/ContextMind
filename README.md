@@ -219,7 +219,7 @@ pytest -q
 node --check frontend/app.js
 ```
 
-Tests additionally cover the 25-question public-data evaluation set, provenance integrity, workspace isolation, replay idempotency, and Person suppression. Original tests cover alias resolution, direct/multi-hop impact, indirect expertise, citations/decision traces, missing context, gaps, idempotent persistence, blocker resolution, and API/write validation. Offline tests use the JSON adapter. An opt-in native FalkorDB integration test and CI service job are provided; their results must be verified separately from local offline tests.
+Tests additionally cover the 25-question public-data evaluation set, provenance integrity, workspace isolation, replay idempotency, and Person suppression. Original tests cover alias resolution, direct/multi-hop impact, indirect expertise, citations/decision traces, missing context, gaps, idempotent persistence, blocker resolution, and API/write validation. Offline tests use the JSON adapter. An opt-in native FalkorDB integration test and CI service job are provided. A separate clean-checkout CI job follows `docker compose up --build -d`, verifies both native workspaces and Cypher proofs, and runs the full suite inside Compose. These are local/CI checks, **not** a public cloud deployment. See [current PASS/FAIL audit](docs/pre-submission-audit.md); recheck the latest CI run before submitting.
 
 ## Scope and limitations
 
