@@ -16,7 +16,7 @@ jobs:
         with:
           name: ContextMind-v4-native-review
           run-id: 39019103685
-          github-token: ${{{{ secrets.GITHUB_TOKEN }}}}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           path: transfer
       - name: Send the checked MP4 to the separate workspace, not Git history
         run: |
