@@ -15,7 +15,7 @@
 
 ## AI assistant disclosure (adapt to the actual form)
 
-“AI coding assistants in Arena.ai Agent Mode helped implement and test this prototype, write documentation, and produce an AI-narrated demonstration. Human maintainers reviewed the resulting code, data-scope limitations and claims.” **Only use the last sentence after actually reviewing it.** The app itself does not call an LLM: a deterministic intent router invokes graph tools and records its tool steps. Do not describe tool routing as autonomous planning, autonomous actions, or an external MCP agent. See `agents/company_brain.py`, `graph/tools.py`, and `graph/store.py` for the implementation.
+“AI coding assistants in Arena.ai Agent Mode helped implement and test this prototype, write documentation, and produce an AI-narrated demonstration. Human maintainers reviewed the resulting code, data-scope limitations and claims.” **Only use the last sentence after actually reviewing it.** The historical v4 video uses a deterministic router (not an LLM). The current NovaPay app can use OpenAI function-calling to select four bounded read-only graph tools when configured; verify actual live API requests and native backend before claiming this in a new submission. The public workspace remains deterministic. Do not call the old video evidence of a live agent, or describe the agent as an unrestricted planner or MCP server. See `agents/company_brain.py`, `graph/tools.py`, and `graph/store.py` for the implementation.
 
 ## Complete local setup (real native backend)
 

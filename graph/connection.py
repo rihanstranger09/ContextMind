@@ -1,5 +1,6 @@
 """FalkorDB connection settings. Secrets are read at runtime, never stored in Git."""
 import os
+from app import config  # load ignored .env before reading connection settings
 from urllib.parse import unquote, urlsplit
 
 
@@ -13,7 +14,8 @@ def connection_options():
     url = os.getenv('FALKOR_URL')
     if url:
         if any(os.getenv(key) is not None for key in (
-            'FALKOR_HOST', 'FALKOR_PORT', 'FALKOR_USERNAME', 'FALKOR_PASSWORD', 'FALKOR_SSL'
+            'FALKOR_HOST', 'FALKOR_PORT', 'FALKOR_USERNAME', 'FALKOR_PASSWORD', 'FALKOR_SSL',
+            'FALKORDB_HOST', 'FALKORDB_PORT', 'FALKORDB_PASSWORD'
         )):
             raise ValueError('FALKOR_URL cannot be combined with individual connection settings')
         try:
@@ -30,13 +32,13 @@ def connection_options():
             raise ValueError('Invalid FALKOR_URL (use redis:// or rediss:// with database 0)') from None
         ssl = parts.scheme == 'rediss'
     else:
-        host = os.getenv('FALKOR_HOST', 'localhost')
+        host = os.getenv('FALKOR_HOST') or os.getenv('FALKORDB_HOST', 'localhost')
         try:
-            port = int(os.getenv('FALKOR_PORT', '6379'))
+            port = int(os.getenv('FALKOR_PORT') or os.getenv('FALKORDB_PORT', '6379'))
         except ValueError:
             raise ValueError('Invalid FALKOR_PORT') from None
         username = os.getenv('FALKOR_USERNAME') or None
-        password = os.getenv('FALKOR_PASSWORD') or None
+        password = os.getenv('FALKOR_PASSWORD') or os.getenv('FALKORDB_PASSWORD') or None
         flag = os.getenv('FALKOR_SSL', 'false').lower()
         if flag not in ('true', 'false'):
             raise ValueError('FALKOR_SSL must be true or false')

@@ -15,6 +15,8 @@ from graph.tools import Tools
 from graph.showcase import graph_showcase, company_showcase
 from agents.company_brain import Agent
 from agents.public_brain import PublicAgent
+from app.config import llm_config
+from agents.llm_agent import LiveAgent
 
 @asynccontextmanager
 async def lifespan(app):
@@ -53,7 +55,9 @@ class Record(BaseModel):
 def health(workspace:Workspace="novapay"):
     metadata = dict(version=VERSION, graph_mode=store(workspace).backend,
                     sample_data='NovaPay' if workspace=='novapay' else None, backend=store(workspace).backend, company='NovaPay' if workspace=='novapay' else 'FalkorDB', workspace=workspace,
-                    fictional_data=workspace=='novapay', synthesis='deterministic graph evidence')
+                    fictional_data=workspace=='novapay',
+                    synthesis=('openai_tool_calling' if workspace=='novapay' and llm_config()['provider']=='openai' else 'deterministic graph evidence'),
+                    llm_configured=bool(llm_config()['api_key']) if workspace=='novapay' and llm_config()['provider']=='openai' else False)
     try:
         if not store(workspace).get('sys_database' if workspace=='novapay' else 'org_falkordb'):
             raise RuntimeError('Seed data unavailable')
@@ -74,7 +78,22 @@ def investigations(limit:int=Query(10,ge=1,le=20),workspace:Workspace='novapay')
     if workspace!='novapay': return []
     return [dict(id=n['id'],question=n['question'],intent=n.get('intent','knowledge'),updated_at=n['updated_at']) for n in store().recent_investigations(limit)]
 @app.post('/api/chat')
-def chat(body:Question,workspace:Workspace='novapay'): return brain(workspace).ask(body.question)
+def chat(body:Question,workspace:Workspace='novapay'):
+    cfg = llm_config()
+    if workspace == 'novapay' and cfg['provider'] == 'openai':
+        if store(workspace).backend != 'falkordb':
+            raise HTTPException(503, 'Live agent requires native FalkorDB; JSON preview is not a native demo')
+        if not cfg['api_key']:
+            raise HTTPException(503, 'Live agent is selected but OPENAI_API_KEY is not configured')
+        from openai import OpenAI
+        try:
+            return LiveAgent(store(workspace), OpenAI(api_key=cfg['api_key'], max_retries=1), cfg['model']).ask(body.question)
+        except Exception:
+            # SDK errors can include request details: do not reflect them into HTTP or logs.
+            raise HTTPException(503, 'LLM service unavailable; no deterministic answer substituted') from None
+    result = brain(workspace).ask(body.question)
+    result['agent_mode'] = 'deterministic'
+    return result
 @app.post('/api/impact')
 def impact(body:Impact,workspace:Workspace='novapay'):
     n=require_entity(body.system_id,workspace)
