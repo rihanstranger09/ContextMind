@@ -1,6 +1,8 @@
 services:
   falkordb:
     image: falkordb/falkordb:v4.12.0
+    # Local host tooling only; never bind the database to a public interface.
+    ports: ["127.0.0.1:6380:6379"]
     volumes:
       - graph_data:/data
     healthcheck:
@@ -14,7 +16,8 @@ services:
     environment:
       GRAPH_BACKEND: falkordb
       FALKOR_HOST: falkordb
-      INGEST_TOKEN: ${INGEST_TOKEN:-local-demo-token}
+      FALKOR_GRAPH: ${FALKOR_GRAPH:-contextmind}
+      INGEST_TOKEN: ${INGEST_TOKEN:-}
     depends_on:
       falkordb:
         condition: service_healthy

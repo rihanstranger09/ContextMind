@@ -20,6 +20,15 @@ def test_native_graph_provenance_replay_and_privacy(monkeypatch):
         assert {n['type'] for n in decision_proof['evidence']}=={'Ticket','Message','Meeting','Document'}
         path=Tools(c).shortest_evidence_path('person_alice','sys_database')
         assert [e['type'] for e in path]==['WORKED_ON','DEPENDS_ON']
+        counts=c.counts()
+        assert counts['nodes']>=30 and counts['relationships']>=49
+        from datetime import datetime, timezone
+        c.upsert(dict(id='ticket_native_receipt',type='Ticket',name='Fictional native test receipt',
+                      updated_at=datetime.now(timezone.utc).isoformat(),status='OPEN'),
+                 [dict(source='ticket_native_receipt',type='BLOCKS',target='project_analytics')])
+        after_counts=c.counts()
+        assert after_counts['nodes']==counts['nodes']+1
+        assert after_counts['relationships']==counts['relationships']+1
         assert s.query('MATCH (o:Organization)-[:OWNS]->(r:Repository) RETURN count(r)')[0][0]>100
         proof=graph_showcase(s)
         assert proof['backend']=='falkordb' and proof['native_cypher_executed']

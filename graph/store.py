@@ -54,6 +54,15 @@ class Store:
 
     def query(self, query, **params): return self.db.query(query, params).result_set
 
+    def counts(self):
+        """Post-write graph totals for the operator recording receipt (no payloads)."""
+        if self.backend == 'demo':
+            return dict(nodes=len(self.nodes), relationships=len(self.edges))
+        return dict(
+            nodes=self.query('MATCH (n:Entity) RETURN count(n)')[0][0],
+            relationships=self.query('MATCH (:Entity)-[r]->(:Entity) RETURN count(r)')[0][0],
+        )
+
     def get(self,id):
         if self.backend=='demo': return self.nodes.get(id)
         rows=self.query('MATCH (n:Entity {id:$id}) RETURN n.payload',id=id)

@@ -129,7 +129,7 @@ def ingest(kind:str,body:Record,authorization:str=Header(default=''),workspace:W
         if existing and existing!=desired: raise HTTPException(409,'Relationship replacement is not supported in this MVP; preserve existing targets')
     n=body.model_dump(mode='json'); n.update(type=types[kind],source='manual',last_synced_at=datetime.now(timezone.utc).isoformat(),content_hash=hashlib.sha256(json.dumps(n,sort_keys=True).encode()).hexdigest())
     store().upsert(n,edges)
-    return dict(record=n,created=current is None)
+    return dict(record=n,created=current is None,graph_counts=store().counts())
 @app.get('/api/workspaces')
 def workspaces():
     return [dict(id='novapay',name='NovaPay',mode='fictional sandbox'),
