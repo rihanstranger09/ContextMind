@@ -85,9 +85,15 @@ def chat(body:Question,workspace:Workspace='novapay'):
             raise HTTPException(503, 'Live agent requires native FalkorDB; JSON preview is not a native demo')
         if not cfg['api_key']:
             raise HTTPException(503, 'Live agent is selected but OPENAI_API_KEY is not configured')
-        from openai import OpenAI
+        from openai import OpenAI, AuthenticationError, RateLimitError, APITimeoutError
         try:
             return LiveAgent(store(workspace), OpenAI(api_key=cfg['api_key'], max_retries=1), cfg['model']).ask(body.question)
+        except AuthenticationError:
+            raise HTTPException(503, 'LLM authentication failed; check your local secret') from None
+        except RateLimitError:
+            raise HTTPException(503, 'LLM rate limit or quota reached') from None
+        except APITimeoutError:
+            raise HTTPException(503, 'LLM request timed out') from None
         except Exception:
             # SDK errors can include request details: do not reflect them into HTTP or logs.
             raise HTTPException(503, 'LLM service unavailable; no deterministic answer substituted') from None
