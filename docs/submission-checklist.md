@@ -1,5 +1,7 @@
 # Company Brain submission checklist (verify before submitting)
 
+**Current PASS/FAIL evidence:** [pre-submission audit](pre-submission-audit.md). The v4 captions are only a draft; the existing video is a v3 fallback and fails the newer short-cut/bitrate target. Do not present a JSON rehearsal as native footage.
+
 **This is not an official scorecard or a claim of prize eligibility.** The Graph Hacks submission form/rules control. The repository contains an earlier prototype and native recording documented on **2026-10-12**, before the October 15–18, 2026 event. A new video or commits made during the event do **not** make that earlier core implementation new. Ask organizers whether this entry is eligible before describing it as qualifying work; preserve the real Git history. Do not alter dates or claim that all core coding began during the event.
 
 - [x] Public repository with runnable app and MIT license: `rihanstranger09/ContextMind`.

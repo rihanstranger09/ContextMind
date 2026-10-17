@@ -72,7 +72,7 @@ $('#graph-proof').onclick=async()=>{
   }catch(e){$('#modal-content').innerHTML='<p class="error">Graph proof unavailable: '+esc(e.message)+'</p>'}
 };
 async function showCompanyProof(){
-  modal('Decision provenance · native graph','<p>Reading the decision graph…</p>');
+  modal('Decision provenance · graph proof','<p>Reading the decision graph…</p>');
   try{const p=await api('/api/graph/company-proof');
     $('#modal-content').innerHTML=`<div class="proof-state ${p.native_cypher_executed?'native':'preview'}">${p.native_cypher_executed?'● NATIVE FALKORDB · SECOND CYPHER QUERY EXECUTED':'○ JSON PREVIEW · CYPHER NOT EXECUTED'}</div>
       <p><strong>${esc(p.decision)}</strong> impacts ${esc(p.project)}. The rationale is backed by four linked records across tickets, chat, meeting and documentation. NovaPay and its data are fictional.</p>

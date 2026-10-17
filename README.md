@@ -3,9 +3,7 @@
 [![Railway ready](https://img.shields.io/badge/Railway-ready_to_deploy-0B0D47?style=flat&logo=railway)](#railway-deployment)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Good questions. Connected answers.** An evidence-first company-brain MVP for FalkorDB · Graph Hacks Track 03.
-
-ContextMind connects a fictional fintech company’s people, teams, projects, systems, documents, tickets, chats, incidents, meetings, and decisions. Ask what breaks when a service fails, who can help, or why a migration was delayed. Inspect the actual relationships behind each claim.
+**Good questions. Connected answers.** ContextMind is an evidence-first prototype for the **Company Brain** track. It connects a **fictional** fintech company's people, teams, projects, systems, tickets, chats and decisions in a typed graph. Ask what breaks when a service fails, who owns it, or why a migration was delayed; inspect the stored relationships and sources behind each bounded answer. The separate public workspace is a captured GitHub snapshot, **not a live feed**. This repository uses **complete local setup**, not a verified live deployment.
 
 ## New: FalkorDB public-data workspace
 
@@ -65,15 +63,21 @@ Public hosting may incur charges. This prototype has no authentication or rate l
 
 ## Quick start
 
-### FalkorDB deployment
+### FalkorDB deployment (local, not public hosting)
 
-Requires Docker with Compose:
+On a clean machine install Git, Docker Engine/Desktop with Compose, and a browser. Clone this **public** repository and run from its root:
 
 ```sh
+git clone https://github.com/rihanstranger09/ContextMind.git
+cd ContextMind
+# If the Company Brain changes are still in an open PR, use its fixed branch:
+git checkout arena/bac5286a-contextmind
 docker compose up --build
 ```
 
-Open **http://localhost:8000**. Compose starts FalkorDB, waits for its health check, and starts the API and frontend. The initial graph is automatically seeded on first startup. FalkorDB data is stored in a named volume; the database port is not published externally.
+No credential is required for the local isolated database; leave operator ingestion disabled. The app automatically seeds the **fictional NovaPay** graph and the separate bounded public snapshot when their graphs are empty. Check `http://localhost:8000/api/health` and `http://localhost:8000/api/health?workspace=falkordb`: both should report `graph_mode: falkordb`. Open both graph-proof dialogs: they must report `native_cypher_executed: true` before claiming native execution. To re-seed for filming, use `scripts/seed_demo_graph.py` with an isolated graph prefix as explained in the recording runbook; never reset a production graph.
+
+Open **http://localhost:8000**. Compose starts FalkorDB, waits for its health check, and starts the API and frontend. Operator writes are disabled unless you explicitly set a private `INGEST_TOKEN` in the shell. The initial graph is automatically seeded on first startup. FalkorDB data is stored in a named volume; its database port is mapped **only to host loopback `127.0.0.1:6380`** for local seed/check tooling and is not published on a public interface. If that port is occupied, change the host-side port and the seed command accordingly.
 
 The graph indicator in the sidebar reports the actual backend. FalkorDB failures do **not** silently fall back to demo storage.
 
@@ -85,10 +89,11 @@ Python 3.11+:
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pytest -q                            # offline suite; native integration test skips without a database
 GRAPH_BACKEND=demo uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Demo mode is explicitly labeled. It uses the same graph tools with a local JSON adapter, persists updates and traces to ignored `.runtime/demo.json`, and needs no credentials or external services. Delete that file to reset demo data. The `.env.example` documents configuration; local shell variables must be exported (the app does not automatically load `.env`).
+Demo mode is explicitly labeled **JSON storage / CYPHER NOT EXECUTED**. It uses the same bounded tools with a local JSON adapter, persists updates and traces to ignored `.runtime/demo.json`, and needs no credentials or external services. Delete that file to reset *only this local preview*; do not confuse it with a native graph proof. The `.env.example` documents configuration. To configure an existing **native** database from a shell, copy it to ignored `.env.txt`, set only your own connection values locally, then load with `set -a; . ./.env.txt; set +a`; the app never automatically loads that file. Do not commit it. Run `npm ci --prefix tests/browser`, then `BASE_URL=http://127.0.0.1:8000 CHROMIUM_BUNDLED_LIBS=1 npm test --prefix tests/browser` for the optional browser checklist.
 
 To connect locally to an existing FalkorDB instance, set `GRAPH_BACKEND=falkordb`, `FALKOR_HOST`, `FALKOR_PORT`, and optionally `FALKOR_GRAPH` (default `contextmind`).
 
@@ -101,12 +106,12 @@ GRAPH_BACKEND=falkordb
 FALKOR_HOST=your-redis-endpoint.example
 FALKOR_PORT=6379
 FALKOR_USERNAME=default
-FALKOR_PASSWORD=your-password
+FALKOR_PASSWORD=                     # set privately, never in a committed file
 FALKOR_SSL=true
 FALKOR_GRAPH=contextmind_cloud
 ```
 
-Or set `GRAPH_BACKEND=falkordb`, `FALKOR_GRAPH=contextmind_cloud`, and **only** `FALKOR_URL=rediss://USER:PASSWORD@HOST:PORT/0` for the connection. URL-encode special characters in URI credentials. `rediss://` enables TLS; certificate verification and hostname verification are required. If the provider uses a private CA, set `FALKOR_CA_CERTS` to a mounted PEM CA file (do not disable TLS verification). Passwordless `redis://` and `FALKOR_SSL=false` are for trusted private/local networks only. Both workspaces are stored in separate graph names: `FALKOR_GRAPH` (fictional NovaPay) and `FALKOR_GRAPH_public_falkordb` (public snapshot). **Startup automatically seeds empty graphs**; choose a fresh dedicated graph prefix and ensure the account permits graph writes. The chat API also persists answer traces. Do not connect this unauthenticated prototype to sensitive production graphs or expose it publicly without access controls.
+Or set `GRAPH_BACKEND=falkordb`, a dedicated `FALKOR_GRAPH`, and **only** `FALKOR_URL` to the provider-supplied TLS URI in ignored local environment or secret variables. URL-encode special characters in URI credentials without printing the URI. `rediss://` enables TLS; certificate verification and hostname verification are required. If the provider uses a private CA, set `FALKOR_CA_CERTS` to a mounted PEM CA file (do not disable TLS verification). Passwordless `redis://` and `FALKOR_SSL=false` are for trusted private/local networks only. Both workspaces are stored in separate graph names: `FALKOR_GRAPH` (fictional NovaPay) and `FALKOR_GRAPH_public_falkordb` (public snapshot). **Startup automatically seeds empty graphs**; choose a fresh dedicated graph prefix and ensure the account permits graph writes. The chat API also persists answer traces. Do not connect this unauthenticated prototype to sensitive production graphs or expose it publicly without access controls.
 
 For local testing, place shell-compatible assignments in an ignored `.env.txt`, then load them into the shell before starting the app:
 
@@ -139,22 +144,33 @@ More supported questions:
 
 Entity IDs are stable and discoverable at `/api/entities`; for example the database is `sys_database` and the migration decision is `decision_delay`.
 
-## Architecture
+## Graph data model and architecture
+
+The fictional Company Brain stores typed nodes `Person`, `Team`, `System`, `Project`, `Ticket`, `Message`, `Meeting`, `Document`, `Decision`, `Incident` and saved `AgentDecision` investigations. The public snapshot uses separate `Organization`, `Repository`, `Version`, `Guide`, `Person`, `Ticket` and integration records. Both graphs use real directed, typed relationships, not inferred links from a visualization.
+
+```mermaid
+flowchart LR
+    Person -->|MEMBER_OF| Team
+    Team -->|OWNS| System
+    Project -->|USES| System
+    System -->|DEPENDS_ON| OtherSystem[System]
+    Decision -->|BASED_ON| Evidence[Ticket / Message / Meeting / Document]
+    Decision -->|IMPACTS| Project
+    Investigation[Saved answer] -->|USED_EVIDENCE| Evidence
+```
 
 **[Graph data model, all native Cypher queries and traversal algorithms →](docs/graph-model-and-queries.md)** · **[Submission checklist, setup, AI assistance and eligibility →](docs/submission-checklist.md)**. The selected track is **Company Brain**. The graph is the operational store in native mode, not merely the SVG view.
 
 ```text
-Vanilla HTML/CSS/JS dashboard
-        │ same-origin REST
-        ▼
-FastAPI → deterministic intent/entity router
-        → allowlisted graph tools
-        → bounded graph traversals
-        → facts + source excerpts + relationship traces
-        → persisted AgentDecision / USED_EVIDENCE
-        ▼
-FalkorDB: typed entities and typed relationships
+Question (same-origin dashboard/API)
+    → deterministic entity/intent router (no LLM)
+    → allowlisted bounded graph tools (impact, ownership, decision, shortest path)
+    → FalkorDB parameterized adjacency reads + fixed Cypher proofs
+    → cited answer + persisted AgentDecision / USED_EVIDENCE trace
 ```
+
+The [architecture card](frontend/architecture.html) depicts this executed path. **Why the graph is essential:** ownership needs `LEADS`/`OWNS`; impact and shortest-path need ordered multi-hop `USES`, `DEPENDS_ON` and `WORKED_ON`; decision provenance requires `BASED_ON` and `IMPACTS`; memory links saved answers to evidence. Without those stored nodes/relationships, the supported answers lose their inspectable paths, and without native FalkorDB the two executable Cypher proofs and graph-backed persistence are unavailable. The JSON adapter is an explicitly labeled offline preview with the same *seeded relationships*, not evidence of native execution.
+
 
 - **`graph/store.py`**: parameterized FalkorDB storage plus an explicit JSON demo adapter. Entities have `:Entity` and their domain label (`:System`, `:Person`, etc.). Edges use native domain relationship types (`DEPENDS_ON`, `USES`, etc.). Node payloads preserve source metadata; `id`, `name`, `updated_at`, and `kind` are also directly queryable properties.
 - **`graph/tools.py`**: entity resolution, direct/team-lead ownership, expert ranking, reverse dependency traversal, **bounded shortest-evidence-path BFS**, decision evidence, blockers, knowledge gaps, and evidence retrieval. Impact analysis includes directly used systems and indirect dependencies up to five hops, with cycle protection. Visualization neighborhoods are capped at 70 nodes and depth 3.
@@ -190,28 +206,11 @@ Interactive OpenAPI documentation: **`/docs`**.
 | GET | `/api/risks` | Critical systems missing ownership/docs |
 | POST | `/api/ingest/documents`, `/tickets`, `/messages` | Token-protected source upsert |
 
-### Live update example
+### Fictional operator update
 
-Compose defaults to `local-demo-token` **for local demonstration only**. Set `INGEST_TOKEN` to a strong secret for anything else. In local Python mode, ingestion is disabled unless the variable is configured. Do not expose this prototype to untrusted users.
+Writes are **disabled by default**. In a disposable local instance, set a private `INGEST_TOKEN` in your shell or Compose environment before launching the app. The ingestion API requires that private operator credential but the dashboard never displays it. See [`scripts/record_runbook.md`](scripts/record_runbook.md) for a guarded recording sequence that reads a real successful API response, shows only allowlisted receipt fields, and stops if a write fails. No production authentication or access controls are provided.
 
-```sh
-curl -X POST http://localhost:8000/api/ingest/tickets \
-  -H 'Authorization: Bearer local-demo-token' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "id": "ticket_replication",
-    "name": "DB-212 · Replication lag exceeds threshold",
-    "content": "Replication validation passed. Migration can resume.",
-    "status": "RESOLVED",
-    "priority": "CRITICAL",
-    "updated_at": "2026-10-10T12:00:00Z",
-    "about_id": "sys_database",
-    "project_id": "project_analytics",
-    "assignee_id": "person_carol"
-  }'
-```
-
-Ask about Analytics Migration blockers again; DB-212 no longer appears as an open blocker. The historical delay decision remains, correctly, in the graph. Upserts use stable IDs, record hashes and sync timestamps, reject older updates and type collisions, and do not duplicate existing edges. Replacing established relationship metadata is rejected rather than silently leaving stale edges. Re-ask/reselect a node to refresh the UI; there is no push sync or background connector.
+The fictional ticket's normalized status is read from the graph on every re-ask. Resolved tickets disappear from *active* blockers while historical answer snapshots stay in memory. Writes reject stale updates and unsupported relationship changes; there is no push sync or background company connector.
 
 ## Verification
 
@@ -240,4 +239,16 @@ This is a runnable hackathon foundation, **not a production knowledge/security p
 
 ### Browser checklist
 
-A repeatable Playwright/Chromium suite now covers the dashboard in both workspaces, workspace switching, typed queries, Send/Enter, graph rendering, sources/traces, every demo question, mobile layout interaction, and console/network failures. See the [run instructions](tests/browser/README.md) and [verified checklist and scope](docs/testing-checklist.md). Browser artifacts remain in ignored `.runtime/browser-results/`.
+A repeatable Playwright/Chromium suite covers the dashboard in both workspaces, workspace switching, typed queries, Send/Enter, graph rendering, sources/traces, every demo question, mobile layout interaction, and console/network failures. See the [run instructions](tests/browser/README.md) and [verified checklist and scope](docs/testing-checklist.md). Browser artifacts remain in ignored `.runtime/browser-results/`.
+
+## Provenance and build timeline
+
+This repository began as an earlier prototype; the current branch adds cloud-connection support, public-snapshot proofs, Company Brain evidence/memory, bounded traversals, and recording assets on top of that pre-existing core. The Git commit history remains intact and is the authoritative build timeline. Later work and a new recording do **not** make earlier implementation retroactively eligible for any event. Confirm eligibility with the organizers before submitting; no claim of a verified cloud deployment or completed submission is made.
+
+## AI assistance disclosure
+
+AI coding assistants in **Arena.ai Agent Mode** helped implement and test code, review documentation, draft video scripts and generate the earlier AI-narrated demonstration. The product itself has **no LLM wired in**: question routing and synthesis are deterministic. The human author must personally review this code, graph model, Cypher, architecture and output, and be able to explain them before declaring that review complete in the submission form. Human review and event eligibility have **not** been independently verified here; do not claim otherwise.
+
+## Submission media status
+
+The [existing downloadable video](presentation/ContextMind-FalkorDB-demo.mp4) is a local-native **v3 fallback**, not the shorter [v4 storyboard](docs/company-brain-v4-script.md). The v4 [draft captions](presentation/ContextMind-v4-draft.srt) are script-derived, **not** synchronized to a new narration or attached to the current MP4. Do not submit them as a finished v4 video. [Exact recording/runbook and video description](scripts/record_runbook.md) explain the remaining native proof and media checks. The repository supplies complete **local setup** instead of a verified hosted URL.

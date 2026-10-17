@@ -15,7 +15,7 @@ jobs:
           node-version: '22'
       - run: pip install -r requirements.txt
       - run: pytest -q
-      - run: node --check frontend/app.js && node --check frontend/demo.js && node --check tests/browser/checklist.cjs && node --check tests/browser/record-showcase.cjs && node --check tests/browser/record-company-brain.cjs && python -m py_compile tests/browser/render-company-brain.py
+      - run: node --check frontend/app.js && node --check frontend/demo.js && node --check frontend/recording-evidence.js && node --check tests/browser/checklist.cjs && node --check tests/browser/recording-evidence.cjs && node --check tests/browser/record-showcase.cjs && node --check tests/browser/record-company-brain.cjs && node --check scripts/check_video_states.cjs && node --check scripts/record_v4.cjs && python -m py_compile tests/browser/render-company-brain.py scripts/seed_demo_graph.py scripts/generate_v4_captions.py
   falkordb:
     runs-on: ubuntu-latest
     services:
