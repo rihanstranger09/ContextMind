@@ -13,6 +13,33 @@ class Tools:
         return [n for _,n in sorted(matches,key=lambda x:-x[0])]
     def links(self,id,kind=None,incoming=False):
         return [e for e in self.s.adjacent(id) if e['target' if incoming else 'source']==id and (not kind or e['type']==kind)]
+    def shortest_evidence_path(self,start_id,end_id,max_hops=4):
+        """Bounded BFS over recorded company edges; returns a shortest path, if any.
+
+        Edges remain in their stored direction. USED_EVIDENCE is excluded so
+        previously saved answers cannot create artificial shortcuts.
+        """
+        allowed={'MEMBER_OF','LEADS','OWNS','WORKED_ON','USES','DEPENDS_ON',
+                 'ABOUT','ASSIGNED_TO','BLOCKS','BASED_ON','IMPACTS',
+                 'AUTHORED','RESOLVED_BY'}
+        if start_id==end_id or not self.s.get(start_id) or not self.s.get(end_id): return []
+        queue=deque([(start_id,[])]); seen={start_id}
+        while queue:
+            key,path=queue.popleft()
+            if len(path)>=max_hops: continue
+            priority={'WORKED_ON':0,'OWNS':1,'DEPENDS_ON':2,'USES':3,'MEMBER_OF':4,'LEADS':5}
+            for e in sorted(self.s.adjacent(key),key=lambda e:(priority.get(e['type'],9),e['type'],e['source'],e['target'])):
+                if e['type'] not in allowed: continue
+                other=e['target'] if e['source']==key else e['source']
+                if other in seen: continue
+                node=self.s.get(other)
+                if not node or node['type']=='AgentDecision': continue
+                candidate=path+[e]
+                if other==end_id: return candidate
+                if len(seen)>=70: continue
+                seen.add(other);queue.append((other,candidate))
+        return []
+
     def find_owner(self,id):
         paths=[]
         for e in self.links(id,'OWNS',True):

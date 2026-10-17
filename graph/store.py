@@ -54,6 +54,15 @@ class Store:
 
     def query(self, query, **params): return self.db.query(query, params).result_set
 
+    def counts(self):
+        """Post-write graph totals for the operator recording receipt (no payloads)."""
+        if self.backend == 'demo':
+            return dict(nodes=len(self.nodes), relationships=len(self.edges))
+        return dict(
+            nodes=self.query('MATCH (n:Entity) RETURN count(n)')[0][0],
+            relationships=self.query('MATCH (:Entity)-[r]->(:Entity) RETURN count(r)')[0][0],
+        )
+
     def get(self,id):
         if self.backend=='demo': return self.nodes.get(id)
         rows=self.query('MATCH (n:Entity {id:$id}) RETURN n.payload',id=id)
@@ -68,6 +77,15 @@ class Store:
                     (not text or text in json.dumps([n['id'],n['name'],n.get('aliases',[])]).lower())][:limit]
         rows=self.query('MATCH (n:Entity) WHERE n.kind <> "AgentDecision" AND ($kind = "" OR n.kind = $kind) AND n.search CONTAINS $text RETURN n.payload LIMIT $limit',kind=type or '',text=text,limit=limit)
         return [json.loads(r[0]) for r in rows]
+
+    def recent_investigations(self,limit=10):
+        """Persisted fictional-workspace answer memory (never public contributor history)."""
+        if self.workspace!='novapay': return []
+        if self.backend=='demo':
+            records=[n for n in self.nodes.values() if n['type']=='AgentDecision']
+            return sorted(records,key=lambda n:(n['updated_at'],n['id']),reverse=True)[:limit]
+        rows=self.query('MATCH (n:Entity:AgentDecision) RETURN n.payload ORDER BY n.updated_at DESC LIMIT $limit',limit=limit)
+        return [json.loads(row[0]) for row in rows]
 
     def adjacent(self,id):
         if self.backend=='demo': return [e for e in self.edges if id in (e['source'],e['target'])]

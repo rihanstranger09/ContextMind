@@ -49,3 +49,35 @@ def graph_showcase(store):
                 cypher=CYPHER, parameters=dict(org=ORG_ID, repo=PYTHON_REPO_ID),
                 paths=results, elapsed_ms=round((perf_counter() - start) * 1000, 2),
                 timing_scope='Server-side graph proof only; not a benchmark or end-to-end response time')
+
+# A second allowlisted query demonstrates decision provenance in the fictional
+# Company Brain graph. Source URLs here are deliberately non-resolving examples.
+COMPANY_CYPHER = '''MATCH (decision:Entity {id: $decision})-[:BASED_ON]->(source:Entity),
+      (decision)-[:IMPACTS]->(project:Entity {id: $project})
+RETURN decision.id, source.id, project.id
+ORDER BY source.id LIMIT 4'''
+
+
+def company_showcase(store):
+    if store.workspace != 'novapay':
+        raise ValueError('Decision proof is limited to the fictional workspace')
+    native = store.backend == 'falkordb'
+    if native:
+        rows = store.query(COMPANY_CYPHER, decision='decision_delay', project='project_analytics')
+    else:
+        impacts = any(e['source'] == 'decision_delay' and e['target'] == 'project_analytics'
+                      and e['type'] == 'IMPACTS' for e in store.edges)
+        rows = [('decision_delay', e['target'], 'project_analytics') for e in store.edges
+                if impacts and e['source'] == 'decision_delay' and e['type'] == 'BASED_ON']
+        rows = sorted(rows, key=lambda row: row[1])[:4]
+    evidence = []
+    for decision, source, project in rows:
+        nodes = [store.get(id) for id in (decision, source, project)]
+        if not all(nodes) or nodes[0]['type'] != 'Decision' or nodes[2]['type'] != 'Project':
+            continue
+        evidence.append(dict(id=nodes[1]['id'], name=nodes[1]['name'],
+                             type=nodes[1]['type'], status=nodes[1].get('status')))
+    return dict(workspace='novapay', backend=store.backend, native_cypher_executed=native,
+                cypher=COMPANY_CYPHER, parameters=dict(decision='decision_delay',project='project_analytics'),
+                decision='Delay Analytics Migration', project='Analytics Migration', evidence=evidence,
+                fictional_data=True)

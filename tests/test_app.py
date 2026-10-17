@@ -129,3 +129,97 @@ def test_submission_demo_questions(store, question):
         assert result['graph_trace']
         assert result['graph']['nodes']
         assert result['graph']['edges']
+
+
+def test_agent_records_actual_tool_steps_and_persists_memory(store):
+    result=Agent(store).ask('Why was Analytics Migration delayed?')
+    names=[s['tool'] for s in result['tool_steps']]
+    assert names==['resolve_entity','explain_decision','get_evidence_sources']
+    assert result['tool_steps'][1]['results']>=1
+    reopened=Store('demo',store.path)
+    latest=reopened.recent_investigations(1)[0]
+    assert latest['id']==result['id']
+    assert latest['tool_steps']==result['tool_steps']
+    assert any(e['type']=='BASED_ON' for p in latest['graph_trace'] for e in p['edges'])
+
+
+def test_memory_api_is_workspace_scoped_and_bounded(store):
+    with TestClient(app) as client:
+        app.state.store=store
+        assert client.get('/api/investigations?workspace=novapay').json()==[]
+        result=client.post('/api/chat?workspace=novapay',json={'question':'Who owns Database Cluster?'}).json()
+        memory=client.get('/api/investigations?workspace=novapay').json()
+        assert memory[0]['id']==result['id'] and memory[0]['intent']=='ownership'
+        assert client.get('/api/entities/'+memory[0]['id']).json()['tool_steps']
+        assert client.get('/api/investigations?workspace=falkordb').json()==[]
+        assert client.get('/api/investigations?limit=100').status_code==422
+
+
+def test_reingest_updates_agent_blocker_answer(store,monkeypatch):
+    monkeypatch.setenv('INGEST_TOKEN','test-token')
+    with TestClient(app) as client:
+        app.state.store=store
+        headers={'Authorization':'Bearer test-token'}
+        payload=dict(id='ticket_demo_fresh',name='New demo blocker',updated_at='2026-10-16T12:00:00Z',project_id='project_analytics',content='Fictional demonstration update')
+        before=client.post('/api/chat',json={'question':'What tickets block Analytics Migration?'}).json()
+        assert 'New demo blocker' not in str(before['facts'])
+        assert client.post('/api/ingest/tickets',headers=headers,json=payload).status_code==200
+        after=client.post('/api/chat',json={'question':'What tickets block Analytics Migration?'}).json()
+        assert 'New demo blocker' in str(after['facts'])
+        payload.update(status='RESOLVED',updated_at='2026-10-16T12:01:00Z')
+        assert client.post('/api/ingest/tickets',headers=headers,json=payload).status_code==200
+        resolved=client.post('/api/chat',json={'question':'What tickets block Analytics Migration?'}).json()
+        assert 'New demo blocker' not in str(resolved['facts'])
+        assert Store('demo',store.path).get('ticket_demo_fresh')['status']=='RESOLVED'
+
+
+def test_shortest_path_tool_uses_recorded_edges_not_answer_memory(store):
+    expected=Tools(store).shortest_evidence_path('person_alice','sys_database')
+    assert len(expected)==2
+    assert expected[0]['source']=='person_alice'
+    assert expected[-1]['target']=='sys_database'
+    result=Agent(store).ask('What is the shortest path from Alice Johnson to Database Cluster?')
+    assert result['intent']=='connection'
+    assert result['tool_steps'][1]['tool']=='shortest_evidence_path'
+    assert result['graph_trace'][0]['edges']==expected
+    assert all(e['type']!='USED_EVIDENCE' for e in expected)
+    assert Tools(store).shortest_evidence_path('person_alice','sys_database')==expected
+    assert Tools(store).shortest_evidence_path('missing','sys_database')==[]
+
+
+def test_recording_write_receipt_counts_and_rejected_write(store,monkeypatch):
+    """Counts describe the graph after each authorized fictional write; rejection emits no receipt."""
+    monkeypatch.setenv('INGEST_TOKEN','test-only-value')
+    with TestClient(app) as client:
+        app.state.store=store
+        payload=dict(id='ticket_video_abcd1234',name='VID-42 · fictional blocker',
+                     updated_at='2026-10-17T10:00:00Z',project_id='project_analytics')
+        rejected=client.post('/api/ingest/tickets',json=payload)
+        assert rejected.status_code==401 and 'graph_counts' not in rejected.json()
+        headers={'Authorization':'Bearer test-only-value'}
+        before=store.counts()
+        added=client.post('/api/ingest/tickets',json=payload,headers=headers)
+        assert added.status_code==200
+        assert added.json()['record']['status']=='OPEN'
+        assert added.json()['graph_counts']==store.counts()
+        assert added.json()['graph_counts']['nodes']==before['nodes']+1
+        payload.update(status='RESOLVED',updated_at='2026-10-17T10:01:00Z')
+        done=client.post('/api/ingest/tickets',json=payload,headers=headers)
+        assert done.status_code==200 and done.json()['record']['status']=='RESOLVED'
+        assert done.json()['graph_counts']==added.json()['graph_counts']
+
+
+def test_impact_answer_exposes_exact_two_edge_path_and_all_core_tools(store):
+    t=Tools(store)
+    assert t.resolve_entity('Database Cluster')[0]['id']=='sys_database'
+    impact=Agent(store).ask('What breaks if the Database Cluster goes down?')
+    assert {'resolve_entity','analyze_system_impact','get_evidence_sources'} <= {s['tool'] for s in impact['tool_steps']}
+    assert any([(e['source'],e['type'],e['target']) for e in p['edges']]==[
+        ('project_payments','USES','sys_gateway'),('sys_gateway','DEPENDS_ON','sys_database')]
+        for p in impact['graph_trace'])
+    assert len(t.shortest_evidence_path('person_alice','sys_database'))==2
+    assert t.find_owner('sys_database') and t.find_project_blockers('project_analytics')
+    assert t.get_evidence_sources({'sys_database'})
+    from graph.showcase import company_showcase
+    assert len(company_showcase(store)['evidence'])==4
+    assert t.explain_decision('decision_delay')

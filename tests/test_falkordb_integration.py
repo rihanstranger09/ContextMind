@@ -5,14 +5,40 @@ import pytest
 from graph.store import Store, PUBLIC_SEED
 from graph.ingestion import replay
 from agents.public_brain import PublicAgent
-from graph.showcase import graph_showcase
+from graph.showcase import graph_showcase, company_showcase
+from graph.tools import Tools
 
 pytestmark=pytest.mark.skipif(os.getenv('FALKOR_INTEGRATION')!='1',reason='Requires a real FalkorDB service')
 
 def test_native_graph_provenance_replay_and_privacy(monkeypatch):
     monkeypatch.setenv('FALKOR_GRAPH','contextmind_test_'+uuid4().hex)
     s=Store('falkordb',workspace='falkordb')
+    c=Store('falkordb',workspace='novapay')
     try:
+        decision_proof=company_showcase(c)
+        assert decision_proof['native_cypher_executed']
+        assert {n['type'] for n in decision_proof['evidence']}=={'Ticket','Message','Meeting','Document'}
+        path=Tools(c).shortest_evidence_path('person_alice','sys_database')
+        assert [e['type'] for e in path]==['WORKED_ON','DEPENDS_ON']
+        counts=c.counts()
+        assert counts['nodes']>=30 and counts['relationships']>=49
+        from datetime import datetime, timezone
+        c.upsert(dict(id='ticket_native_receipt',type='Ticket',name='Fictional native test receipt',
+                      updated_at=datetime.now(timezone.utc).isoformat(),status='OPEN'),
+                 [dict(source='ticket_native_receipt',type='BLOCKS',target='project_analytics')])
+        after_counts=c.counts()
+        assert after_counts['nodes']==counts['nodes']+1
+        assert after_counts['relationships']==counts['relationships']+1
+        # Mock only the provider. The agent tool executes real native FalkorDB reads.
+        from agents.llm_agent import LiveAgent
+        from tests.test_live_agent import FakeLLM, message
+        fake=FakeLLM(message(calls=[('shortest_path', {'source_entity':'Alice Johnson',
+                  'target_entity':'Database Cluster'})]),
+                  message(content='Alice reaches the cluster through the gateway [E1].'))
+        live=LiveAgent(c, fake).ask('How is Alice Johnson connected to Database Cluster?')
+        assert live['agent_mode']=='openai_tool_calling' and live['answer'].endswith('[E1].')
+        assert [edge['type'] for edge in live['graph_trace'][0]['edges']]==['WORKED_ON','DEPENDS_ON']
+        assert c.get(live['id'])['tool_steps'][0]['tool']=='shortest_path'
         assert s.query('MATCH (o:Organization)-[:OWNS]->(r:Repository) RETURN count(r)')[0][0]>100
         proof=graph_showcase(s)
         assert proof['backend']=='falkordb' and proof['native_cypher_executed']
@@ -35,3 +61,4 @@ def test_native_graph_provenance_replay_and_privacy(monkeypatch):
         assert s.is_suppressed(person['id'])
     finally:
         s.db.delete()
+        c.db.delete()
