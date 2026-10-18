@@ -39,6 +39,22 @@ def graph_error_errno(error):
     return None
 
 
+# Our own static configuration messages. They never contain variable values,
+# so /api/health may surface them verbatim as graph_error_detail.
+SAFE_CONFIG_MESSAGES = {
+    'FALKOR_URL cannot be combined with individual connection settings',
+    'Invalid FALKOR_URL (use redis:// or rediss:// with database 0)',
+    'Invalid FALKOR_PORT',
+    'FALKOR_SSL must be true or false',
+    'FalkorDB host is empty',
+    'FalkorDB host must be a bare hostname (no scheme or path)',
+    'FalkorDB host appears to include a port; put the port in its own variable',
+    'FalkorDB host must not contain spaces',
+    'Invalid FalkorDB host or port',
+    'FALKOR_CA_CERTS requires TLS',
+}
+
+
 def graph_error_chain(error):
     """Exception class names in the chain (module.Name only; never messages)."""
     import re as _re
@@ -147,10 +163,18 @@ def connection_options():
 
     host = host.strip() if isinstance(host, str) else host
     username = (username.strip() or None) if isinstance(username, str) else username
-    # A URL or path pasted into the host field is a format error, not a DNS one.
-    # A single colon means "host:port" was pasted together (IPv6 has several).
-    if not host or '://' in host or '/' in host or host.count(':') == 1 \
-            or any(ch.isspace() for ch in host) or not 1 <= port <= 65535:
+    # Format mistakes get distinct, value-free messages (see SAFE_CONFIG_MESSAGES):
+    # a URL/path in the host field, "host:port" pasted together (IPv6 has
+    # several colons), or stray spaces are operator-fixable format errors.
+    if not host:
+        raise ValueError('FalkorDB host is empty')
+    if '://' in host or '/' in host:
+        raise ValueError('FalkorDB host must be a bare hostname (no scheme or path)')
+    if host.count(':') == 1:
+        raise ValueError('FalkorDB host appears to include a port; put the port in its own variable')
+    if any(ch.isspace() for ch in host):
+        raise ValueError('FalkorDB host must not contain spaces')
+    if not 1 <= port <= 65535:
         raise ValueError('Invalid FalkorDB host or port')
     ca_certs = os.getenv('FALKOR_CA_CERTS') or None
     if ca_certs and not ssl:
