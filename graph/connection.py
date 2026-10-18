@@ -11,6 +11,9 @@ GRAPH_ERROR_HINTS = {
     'auth_failed': 'The database rejected the credentials. Check the password variable, and add the provider-issued username variable if your instance has one.',
     'tls_failed': 'TLS handshake failed. Check whether the endpoint requires TLS (FALKORDB_SSL=true) or is plain Redis protocol.',
     'timeout': 'Connection timed out. The instance may be paused, or its host/port may be unreachable from the deployment region.',
+    'dns_failed': 'The hostname does not resolve in public DNS. Re-copy the host value exactly from the provider console (hostname only: no https://, no port, no path, no spaces).',
+    'connection_refused': 'The host resolved but refused the connection. Check the port value and that the FalkorDB instance is running (not paused or stopped).',
+    'connection_closed': 'The server closed the connection during setup. Usually a TLS mismatch (toggle FALKORDB_SSL) or the port is not the Redis-protocol port.',
     'unreachable': 'Host could not be reached. Check host/port values, whether the endpoint requires TLS (FALKORDB_SSL=true), and that the instance is running and publicly reachable.',
     'server_error': 'The database answered with an error. Confirm this endpoint is a FalkorDB (graph module) instance.',
     'unknown': 'Unclassified connection failure. Re-check every connection variable against the provider console.',
@@ -31,6 +34,18 @@ def classify_graph_error(error):
         return 'tls_failed'
     if isinstance(error, TimeoutError) or name in ('TimeoutError', 'ReadTimeout', 'ConnectTimeout'):
         return 'timeout'
+    # Sub-classify connection failures; wrapped driver errors keep socket
+    # wording in their message, which is matched token-wise (never echoed).
+    import socket as _socket
+    if isinstance(error, _socket.gaierror) or 'NAME OR SERVICE NOT KNOWN' in text \
+            or 'NAME RESOLUTION' in text or 'FAILED TO RESOLVE' in text:
+        return 'dns_failed'
+    if isinstance(error, ConnectionRefusedError) or 'CONNECTION REFUSED' in text \
+            or getattr(error, 'errno', None) == 111:
+        return 'connection_refused'
+    if isinstance(error, (ConnectionResetError, BrokenPipeError, EOFError)) \
+            or 'CONNECTION CLOSED' in text or 'RESET BY PEER' in text or 'EOF OCCURRED' in text:
+        return 'connection_closed'
     if name in ('ConnectionError', 'ConnectionRefusedError', 'ConnectionResetError',
                 'gaierror', 'NewConnectionError', 'BusyLoadingError') \
             or isinstance(error, (ConnectionError, OSError)):
@@ -84,7 +99,11 @@ def connection_options():
             raise ValueError('FALKOR_SSL must be true or false')
         ssl = flag == 'true'
 
-    if not host or not 1 <= port <= 65535:
+    host = host.strip() if isinstance(host, str) else host
+    username = (username.strip() or None) if isinstance(username, str) else username
+    # A URL or path pasted into the host field is a format error, not a DNS one.
+    if not host or '://' in host or '/' in host or any(ch.isspace() for ch in host) \
+            or not 1 <= port <= 65535:
         raise ValueError('Invalid FalkorDB host or port')
     ca_certs = os.getenv('FALKOR_CA_CERTS') or None
     if ca_certs and not ssl:
