@@ -2,6 +2,8 @@ name: Purge pre-cutoff artifacts
 on:
   push:
     branches: ['tmp/purge-pre-oct15']
+    paths:
+      - '.github/workflows/purge-pre-oct15.yml'
   workflow_dispatch:
 permissions:
   issues: write
@@ -13,6 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Purge artifacts that predate 2026-10-15
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -41,20 +46,20 @@ jobs:
           log "repo=$REPO"
           log "token-actor: $(curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/user | sed -n 's/.*"\(login\|message\)":"\([^"]*\)".*/\1=\2/p' | head -1)"
 
-          attempt "REST DELETE issue #6"      gh api --method DELETE "repos/$REPO/issues/6"
+          attempt "REST DELETE issue #6"       gh api --method DELETE "repos/$REPO/issues/6"
           attempt "REST PATCH issue #6 closed" gh api --method PATCH "repos/$REPO/issues/6" -f state=closed
 
           NODE=$(gh api "repos/$REPO/issues/6" --jq '.node_id' 2>/dev/null)
           log ""
-          log "issue #6 node_id: ${NODE:-<unavailable>}"
+          log "issue #6 node_id: ${NODE:-unavailable}"
           if [ -n "$NODE" ] && [ "$NODE" != "null" ]; then
             attempt "GraphQL deleteIssue" gh api graphql -f query="mutation{ deleteIssue(input:{issueId:\"$NODE\"}){ clientMutationId } }"
           fi
 
-          attempt "REST DELETE PR #1"         gh api --method DELETE "repos/$REPO/pulls/1"
+          attempt "REST DELETE PR #1" gh api --method DELETE "repos/$REPO/pulls/1"
           PRNODE=$(gh api "repos/$REPO/pulls/1" --jq '.node_id' 2>/dev/null)
           log ""
-          log "PR #1 node_id: ${PRNODE:-<unavailable>}"
+          log "PR #1 node_id: ${PRNODE:-unavailable}"
           if [ -n "$PRNODE" ] && [ "$PRNODE" != "null" ]; then
             attempt "GraphQL archivePullRequest" gh api graphql -f query="mutation{ archivePullRequest(input:{pullRequestId:\"$PRNODE\"}){ clientMutationId } }"
           fi
@@ -68,5 +73,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$REPORT"
-          git commit -m "purge report" >/dev/null 2>&1
+          git commit -m "purge report" > /dev/null 2>&1
           git push origin "HEAD:${{ github.ref_name }}" 2>&1 | tail -2
