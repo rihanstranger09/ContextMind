@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/main.py": {
+      "maxDuration": 300,
+      "includeFiles": "{frontend/**,data/sample_company.json,data/falkordb/snapshot.json}",
+      "excludeFiles": "{tests/**,presentation/**,.github/**,scripts/narration-v4/**,data/falkordb/eval.jsonl}"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+# Keep secrets and local/generated media out of every deployment upload.
+.env
+.env.txt
+.venv/
+.runtime/
+deliverables/
+node_modules/
+__pycache__/
+.pytest_cache/
+tests/browser/node_modules/
+# 25 MB presentation video is served from the repository, not the function.
+presentation/*.mp4

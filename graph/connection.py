@@ -13,9 +13,11 @@ def connection_options():
     """
     url = os.getenv('FALKOR_URL')
     if url:
-        if any(os.getenv(key) is not None for key in (
+        # Blank values (for example keys pre-created empty in a hosting
+        # dashboard) count as unset everywhere in this module.
+        if any(os.getenv(key) for key in (
             'FALKOR_HOST', 'FALKOR_PORT', 'FALKOR_USERNAME', 'FALKOR_PASSWORD', 'FALKOR_SSL',
-            'FALKORDB_HOST', 'FALKORDB_PORT', 'FALKORDB_PASSWORD'
+            'FALKORDB_HOST', 'FALKORDB_PORT', 'FALKORDB_USERNAME', 'FALKORDB_PASSWORD', 'FALKORDB_SSL'
         )):
             raise ValueError('FALKOR_URL cannot be combined with individual connection settings')
         try:
@@ -32,14 +34,16 @@ def connection_options():
             raise ValueError('Invalid FALKOR_URL (use redis:// or rediss:// with database 0)') from None
         ssl = parts.scheme == 'rediss'
     else:
-        host = os.getenv('FALKOR_HOST') or os.getenv('FALKORDB_HOST', 'localhost')
+        # FALKORDB_* aliases match the variable names already used by the
+        # hosted deployment dashboards; FALKOR_* keeps precedence.
+        host = os.getenv('FALKOR_HOST') or os.getenv('FALKORDB_HOST') or 'localhost'
         try:
-            port = int(os.getenv('FALKOR_PORT') or os.getenv('FALKORDB_PORT', '6379'))
+            port = int(os.getenv('FALKOR_PORT') or os.getenv('FALKORDB_PORT') or '6379')
         except ValueError:
             raise ValueError('Invalid FALKOR_PORT') from None
-        username = os.getenv('FALKOR_USERNAME') or None
+        username = os.getenv('FALKOR_USERNAME') or os.getenv('FALKORDB_USERNAME') or None
         password = os.getenv('FALKOR_PASSWORD') or os.getenv('FALKORDB_PASSWORD') or None
-        flag = os.getenv('FALKOR_SSL', 'false').lower()
+        flag = (os.getenv('FALKOR_SSL') or os.getenv('FALKORDB_SSL') or 'false').lower()
         if flag not in ('true', 'false'):
             raise ValueError('FALKOR_SSL must be true or false')
         ssl = flag == 'true'

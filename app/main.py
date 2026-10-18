@@ -2,9 +2,11 @@ import hashlib
 import json
 import os
 import secrets
+import threading
 from contextlib import asynccontextmanager
 from datetime import datetime,timezone
 from pathlib import Path
+from time import monotonic
 from typing import Literal
 from fastapi import FastAPI,HTTPException,Header,Query
 from fastapi.staticfiles import StaticFiles
@@ -18,17 +20,55 @@ from agents.public_brain import PublicAgent
 from app.config import llm_config
 from agents.llm_agent import LiveAgent
 
+# Graph stores are built lazily and cached per workspace. On serverless hosts
+# (for example Vercel) a missing or unreachable hosted FalkorDB must not take
+# down the whole function at import/startup: the dashboard still has to serve
+# and /api/health must be able to report an honest 503 instead of crashing.
+# A short failure cache avoids paying a connect timeout on every request.
+_STORE_LOCK = threading.Lock()
+_STORE_FAILURES = {}
+STORE_RETRY_SECONDS = 30
+
+
+def _build_store(workspace):
+    attr = 'public_store' if workspace == 'falkordb' else 'store'
+    existing = getattr(app.state, attr, None)
+    if existing is not None:
+        return existing
+    with _STORE_LOCK:
+        existing = getattr(app.state, attr, None)
+        if existing is not None:
+            return existing
+        failed_at = _STORE_FAILURES.get(workspace)
+        if failed_at is not None and monotonic() - failed_at < STORE_RETRY_SECONDS:
+            raise HTTPException(503, 'Graph backend unavailable; check deployment configuration')
+        try:
+            built = Store(workspace=workspace)
+        except Exception:
+            # Connection errors can embed endpoint details; never reflect them.
+            _STORE_FAILURES[workspace] = monotonic()
+            raise HTTPException(503, 'Graph backend unavailable; check deployment configuration') from None
+        setattr(app.state, attr, built)
+        _STORE_FAILURES.pop(workspace, None)
+        return built
+
+
 @asynccontextmanager
 async def lifespan(app):
-    app.state.store=Store()
-    app.state.public_store=Store(workspace="falkordb")
+    # Warm both workspaces when the backend is reachable. Failures are cached
+    # by _build_store and surfaced through /api/health, not by aborting startup.
+    for workspace in ('novapay', 'falkordb'):
+        try:
+            _build_store(workspace)
+        except HTTPException:
+            pass
     yield
 VERSION = '1.0.0-mvp'
 FRONTEND = Path(__file__).resolve().parents[1] / 'frontend'
 app=FastAPI(title='ContextMind',version=VERSION,lifespan=lifespan)
 Workspace = Literal['novapay', 'falkordb']
 def store(workspace='novapay'):
-    return app.state.public_store if workspace=='falkordb' else app.state.store
+    return _build_store(workspace)
 
 def brain(workspace):
     return PublicAgent(store(workspace)) if workspace=='falkordb' else Agent(store(workspace))
@@ -53,17 +93,30 @@ class Record(BaseModel):
     assignee_id:str|None=None
 @app.get('/api/health')
 def health(workspace:Workspace="novapay"):
-    metadata = dict(version=VERSION, graph_mode=store(workspace).backend,
-                    sample_data='NovaPay' if workspace=='novapay' else None, backend=store(workspace).backend, company='NovaPay' if workspace=='novapay' else 'FalkorDB', workspace=workspace,
+    # graph_configured is what the deployment asked for; graph_mode/backend is
+    # the store that actually opened ('unavailable' when it could not). Only a
+    # successful seed probe below may report healthy + graph_ready=true.
+    try:
+        cfg = llm_config()
+        synthesis = ('openai_tool_calling' if workspace=='novapay' and cfg['provider']=='openai' else 'deterministic graph evidence')
+        llm_ready = bool(cfg['api_key']) if workspace=='novapay' and cfg['provider']=='openai' else False
+    except ValueError:
+        synthesis, llm_ready = 'misconfigured', False
+    try:
+        backend = store(workspace).backend
+    except HTTPException:
+        backend = 'unavailable'
+    metadata = dict(version=VERSION, graph_mode=backend,
+                    graph_configured=os.getenv('GRAPH_BACKEND', 'demo'),
+                    sample_data='NovaPay' if workspace=='novapay' else None, backend=backend, company='NovaPay' if workspace=='novapay' else 'FalkorDB', workspace=workspace,
                     fictional_data=workspace=='novapay',
-                    synthesis=('openai_tool_calling' if workspace=='novapay' and llm_config()['provider']=='openai' else 'deterministic graph evidence'),
-                    llm_configured=bool(llm_config()['api_key']) if workspace=='novapay' and llm_config()['provider']=='openai' else False)
+                    synthesis=synthesis, llm_configured=llm_ready)
     try:
         if not store(workspace).get('sys_database' if workspace=='novapay' else 'org_falkordb'):
             raise RuntimeError('Seed data unavailable')
     except Exception:
-        return JSONResponse(status_code=503, content=dict(status='unhealthy', **metadata))
-    return dict(status='healthy', **metadata)
+        return JSONResponse(status_code=503, content=dict(status='unhealthy', graph_ready=False, **metadata))
+    return dict(status='healthy', graph_ready=True, **metadata)
 
 @app.get('/dashboard', include_in_schema=False)
 @app.get('/dashboard/', include_in_schema=False)
