@@ -2,9 +2,11 @@ import hashlib
 import json
 import os
 import secrets
+import threading
 from contextlib import asynccontextmanager
 from datetime import datetime,timezone
 from pathlib import Path
+from time import monotonic
 from typing import Literal
 from fastapi import FastAPI,HTTPException,Header,Query
 from fastapi.staticfiles import StaticFiles
@@ -16,19 +18,60 @@ from graph.showcase import graph_showcase, company_showcase
 from agents.company_brain import Agent
 from agents.public_brain import PublicAgent
 from app.config import llm_config
-from agents.llm_agent import LiveAgent
+from agents.llm_agent import LiveAgent, create_client
+from graph.connection import GRAPH_ERROR_HINTS, classify_graph_error, graph_error_chain, graph_error_errno
+
+# Graph stores are built lazily and cached per workspace. On serverless hosts
+# (for example Vercel) a missing or unreachable hosted FalkorDB must not take
+# down the whole function at import/startup: the dashboard still has to serve
+# and /api/health must be able to report an honest 503 instead of crashing.
+# A short failure cache avoids paying a connect timeout on every request.
+_STORE_LOCK = threading.Lock()
+_STORE_FAILURES = {}
+STORE_RETRY_SECONDS = 30
+
+
+def _build_store(workspace):
+    attr = 'public_store' if workspace == 'falkordb' else 'store'
+    existing = getattr(app.state, attr, None)
+    if existing is not None:
+        return existing
+    with _STORE_LOCK:
+        existing = getattr(app.state, attr, None)
+        if existing is not None:
+            return existing
+        failure = _STORE_FAILURES.get(workspace)
+        if failure is not None and monotonic() - failure[0] < STORE_RETRY_SECONDS:
+            raise HTTPException(503, 'Graph backend unavailable; check deployment configuration')
+        try:
+            built = Store(workspace=workspace)
+        except Exception as error:
+            # Connection errors can embed endpoint details; keep only a safe
+            # category for /api/health (see graph.connection.classify_graph_error).
+            _STORE_FAILURES[workspace] = (monotonic(), classify_graph_error(error),
+                                          graph_error_errno(error), graph_error_chain(error))
+            raise HTTPException(503, 'Graph backend unavailable; check deployment configuration') from None
+        setattr(app.state, attr, built)
+        _STORE_FAILURES.pop(workspace, None)
+        return built
+
 
 @asynccontextmanager
 async def lifespan(app):
-    app.state.store=Store()
-    app.state.public_store=Store(workspace="falkordb")
+    # Warm both workspaces when the backend is reachable. Failures are cached
+    # by _build_store and surfaced through /api/health, not by aborting startup.
+    for workspace in ('novapay', 'falkordb'):
+        try:
+            _build_store(workspace)
+        except HTTPException:
+            pass
     yield
 VERSION = '1.0.0-mvp'
 FRONTEND = Path(__file__).resolve().parents[1] / 'frontend'
 app=FastAPI(title='ContextMind',version=VERSION,lifespan=lifespan)
 Workspace = Literal['novapay', 'falkordb']
 def store(workspace='novapay'):
-    return app.state.public_store if workspace=='falkordb' else app.state.store
+    return _build_store(workspace)
 
 def brain(workspace):
     return PublicAgent(store(workspace)) if workspace=='falkordb' else Agent(store(workspace))
@@ -53,17 +96,42 @@ class Record(BaseModel):
     assignee_id:str|None=None
 @app.get('/api/health')
 def health(workspace:Workspace="novapay"):
-    metadata = dict(version=VERSION, graph_mode=store(workspace).backend,
-                    sample_data='NovaPay' if workspace=='novapay' else None, backend=store(workspace).backend, company='NovaPay' if workspace=='novapay' else 'FalkorDB', workspace=workspace,
+    # graph_configured is what the deployment asked for; graph_mode/backend is
+    # the store that actually opened ('unavailable' when it could not). Only a
+    # successful seed probe below may report healthy + graph_ready=true.
+    try:
+        cfg = llm_config()
+        live = workspace=='novapay' and cfg['provider'] in ('openai', 'cohere')
+        synthesis = (cfg['provider'] + '_tool_calling' if live else 'deterministic graph evidence')
+        llm_ready = bool(cfg['api_key']) if live else False
+    except ValueError:
+        synthesis, llm_ready = 'misconfigured', False
+    try:
+        backend = store(workspace).backend
+    except HTTPException:
+        backend = 'unavailable'
+    metadata = dict(version=VERSION, graph_mode=backend,
+                    graph_configured=os.getenv('GRAPH_BACKEND', 'demo'),
+                    sample_data='NovaPay' if workspace=='novapay' else None, backend=backend, company='NovaPay' if workspace=='novapay' else 'FalkorDB', workspace=workspace,
                     fictional_data=workspace=='novapay',
-                    synthesis=('openai_tool_calling' if workspace=='novapay' and llm_config()['provider']=='openai' else 'deterministic graph evidence'),
-                    llm_configured=bool(llm_config()['api_key']) if workspace=='novapay' and llm_config()['provider']=='openai' else False)
+                    synthesis=synthesis, llm_configured=llm_ready)
     try:
         if not store(workspace).get('sys_database' if workspace=='novapay' else 'org_falkordb'):
             raise RuntimeError('Seed data unavailable')
-    except Exception:
-        return JSONResponse(status_code=503, content=dict(status='unhealthy', **metadata))
-    return dict(status='healthy', **metadata)
+    except HTTPException:
+        # Store could not be built; report only the cached safe category.
+        failure = _STORE_FAILURES.get(workspace)
+        category = failure[1] if failure else 'unknown'
+        return JSONResponse(status_code=503, content=dict(status='unhealthy', graph_ready=False,
+                            graph_error=category, graph_error_hint=GRAPH_ERROR_HINTS[category],
+                            graph_error_errno=failure[2] if failure and len(failure) > 2 else None,
+                            graph_error_chain=failure[3] if failure and len(failure) > 3 else [], **metadata))
+    except Exception as error:
+        category = classify_graph_error(error) if not isinstance(error, RuntimeError) else 'seed_missing'
+        hint = GRAPH_ERROR_HINTS.get(category, 'Graph opened but the seeded records were not found; check FALKOR_GRAPH names the intended distinct graph.')
+        return JSONResponse(status_code=503, content=dict(status='unhealthy', graph_ready=False,
+                            graph_error=category, graph_error_hint=hint, **metadata))
+    return dict(status='healthy', graph_ready=True, graph_error=None, **metadata)
 
 @app.get('/dashboard', include_in_schema=False)
 @app.get('/dashboard/', include_in_schema=False)
@@ -80,14 +148,15 @@ def investigations(limit:int=Query(10,ge=1,le=20),workspace:Workspace='novapay')
 @app.post('/api/chat')
 def chat(body:Question,workspace:Workspace='novapay'):
     cfg = llm_config()
-    if workspace == 'novapay' and cfg['provider'] == 'openai':
+    if workspace == 'novapay' and cfg['provider'] in ('openai', 'cohere'):
         if store(workspace).backend != 'falkordb':
             raise HTTPException(503, 'Live agent requires native FalkorDB; JSON preview is not a native demo')
         if not cfg['api_key']:
-            raise HTTPException(503, 'Live agent is selected but OPENAI_API_KEY is not configured')
-        from openai import OpenAI, AuthenticationError, RateLimitError, APITimeoutError
+            raise HTTPException(503, 'Live agent is selected but ' + cfg['api_key_env'] + ' is not configured')
+        from openai import AuthenticationError, RateLimitError, APITimeoutError
         try:
-            return LiveAgent(store(workspace), OpenAI(api_key=cfg['api_key'], max_retries=1), cfg['model']).ask(body.question)
+            return LiveAgent(store(workspace), create_client(cfg['provider'], cfg['api_key']),
+                             cfg['model'], provider=cfg['provider']).ask(body.question)
         except AuthenticationError:
             raise HTTPException(503, 'LLM authentication failed; check your local secret') from None
         except RateLimitError:
