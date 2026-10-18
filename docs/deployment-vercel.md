@@ -129,7 +129,9 @@ It retries for a few minutes while a cold deployment seeds. Exit code 0 and
 a final `PASS` line are the release evidence — save the output with the
 date. Anything else (JSON mode, 503 `unavailable`, partial seed) exits 1.
 
-Troubleshooting, in order: 503 with `graph_mode: unavailable` → credentials
+Troubleshooting, in order: a Vercel login page instead of the app →
+Deployment Protection is still covering this URL (see Exposure notes).
+503 with `graph_mode: unavailable` → credentials
 missing/wrong, a required username or `FALKORDB_SSL=true` not set, or no
 redeploy after the last env change. `graph_mode: demo` → `GRAPH_BACKEND`
 did not reach the deployment. Only the first request slow → initial seeding;
