@@ -39,6 +39,17 @@ def graph_error_errno(error):
     return None
 
 
+def graph_error_chain(error):
+    """Exception class names in the chain (module.Name only; never messages)."""
+    import re as _re
+    names = []
+    for link in _error_chain(error):
+        label = _re.sub(r'[^A-Za-z0-9_.]', '', f'{type(link).__module__}.{type(link).__name__}')[:80]
+        if label:
+            names.append(label)
+    return names
+
+
 def classify_graph_error(error):
     """Map a config/driver exception to one safe category; never returns messages.
 
