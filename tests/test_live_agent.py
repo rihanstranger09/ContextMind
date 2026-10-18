@@ -3,7 +3,7 @@ import json
 from types import SimpleNamespace as NS
 import pytest
 from fastapi.testclient import TestClient
-from agents.llm_agent import LiveAgent, ABSTAIN, TOOLS
+from agents.llm_agent import LiveAgent, ABSTAIN, ABSTAIN_UNCITED, TOOLS
 from app.main import app
 from graph.store import Store
 
@@ -58,6 +58,9 @@ def test_absent_evidence_never_becomes_a_model_answer(graph):
     result = LiveAgent(graph, fake).ask('Who owns the Lunar Colony?')
     assert result['answer'] == ABSTAIN and not result['facts']
     assert result['tool_steps'][0]['results'] == 0
+    # No evidence means no rewrite attempt either; the abstention stays factual.
+    assert result['grounding'] == {'status': 'no_evidence', 'reason': None}
+    assert len(fake.inputs) == 2
 
 
 def test_invalid_and_hallucinated_tool_are_rejected(graph):
@@ -69,17 +72,53 @@ def test_invalid_and_hallucinated_tool_are_rejected(graph):
     assert len(TOOLS) == 4
 
 
-def test_uncited_sentence_abstains(graph):
+def test_uncited_sentence_abstains_honestly(graph):
+    draft = 'Recorded owner [E1]. Also the database is on fire.'
     fake = FakeLLM(message(calls=[('find_owner', {'system_or_project': 'Database Cluster'})]),
-                   message(content='Recorded owner [E1]. Also the database is on fire.'))
-    assert LiveAgent(graph, fake).ask('Who owns it?')['answer'] == ABSTAIN
+                   message(content=draft),
+                   message(content=draft))  # the bounded rewrite repeats the uncited claim
+    result = LiveAgent(graph, fake).ask('Who owns it?')
+    # Evidence existed, so the abstention must not claim otherwise.
+    assert result['answer'] == ABSTAIN_UNCITED and not result['facts']
+    assert result['grounding'] == {'status': 'rejected', 'reason': 'uncited_sentence'}
+    assert 'tools' not in fake.inputs[2]  # rewrite is a plain completion, not a tool round
+    assert graph.get(result['id'])['grounding']['status'] == 'rejected'
 
 
 def test_bad_citation_is_not_trusted(graph):
     fake = FakeLLM(message(calls=[('find_owner', {'system_or_project': 'Database Cluster'})]),
-                   message(content='Made up claim [E999].'))
+                   message(content='Made up claim [E999].'),
+                   message(content='Still made up [E999].'))
     result = LiveAgent(graph, fake).ask('Who owns Database Cluster?')
-    assert result['answer'] == ABSTAIN and not result['graph_trace']
+    assert result['answer'] == ABSTAIN_UNCITED and not result['graph_trace']
+    assert result['grounding'] == {'status': 'rejected', 'reason': 'unknown_citations'}
+
+
+def test_rewrite_recovers_structural_but_cited_draft(graph):
+    fake = FakeLLM(message(calls=[('find_owner', {'system_or_project': 'Database Cluster'})]),
+                   message(content='Here is the answer. Platform Engineering is the recorded owner [E1].'),
+                   message(content='Platform Engineering is the recorded owner [E1].'))
+    result = LiveAgent(graph, fake).ask('Who owns Database Cluster?')
+    assert result['answer'] == 'Platform Engineering is the recorded owner [E1].'
+    assert result['grounding'] == {'status': 'repaired', 'reason': 'uncited_sentence'}
+    assert len(fake.inputs) == 3  # exactly one bounded rewrite was spent
+
+
+def test_grouped_and_range_citations_normalized_but_still_validated(graph):
+    fake = FakeLLM(message(calls=[('get_decision_provenance', {'decision_id': 'decision_delay'})]),
+                   message(content='The decision rests on recorded sources [E1, E3]. '
+                                   'The evidence set spans further records [E1-E5].'))
+    result = LiveAgent(graph, fake).ask('Why was it delayed?')
+    assert result['grounding'] == {'status': 'passed', 'reason': None}
+    assert '[E1][E3]' in result['answer'] and '[E4]' in result['answer']
+    assert len(fake.inputs) == 2  # normalization alone sufficed; no rewrite spent
+    # A group smuggling an unknown ID still fails closed after expansion.
+    fake = FakeLLM(message(calls=[('get_decision_provenance', {'decision_id': 'decision_delay'})]),
+                   message(content='Supported claim [E1, E999].'),
+                   message(content='Supported claim [E1, E999].'))
+    result = LiveAgent(graph, fake).ask('Why was it delayed?')
+    assert result['answer'] == ABSTAIN_UNCITED
+    assert result['grounding']['reason'] == 'unknown_citations'
 
 
 def test_no_api_key_fails_closed_not_deterministic(graph, monkeypatch):
