@@ -6,7 +6,7 @@ import pytest
 from redis.exceptions import (AuthenticationError, ConnectionError as RedisConnectionError,
                               ResponseError, TimeoutError as RedisTimeoutError)
 
-from graph.connection import GRAPH_ERROR_HINTS, classify_graph_error
+from graph.connection import GRAPH_ERROR_HINTS, classify_graph_error, graph_error_errno
 
 
 @pytest.mark.parametrize('error,expected', [
@@ -30,6 +30,26 @@ def test_classify_graph_error(error, expected):
     assert category == expected
     # Hints are static operator guidance; they can never contain an endpoint.
     assert 'db.invalid' not in GRAPH_ERROR_HINTS[category]
+
+
+def test_wrapped_socket_errors_classify_through_the_chain():
+    try:
+        try:
+            raise OSError(101, 'Network is unreachable')
+        except OSError as inner:
+            raise RedisConnectionError('Error connecting to db.invalid') from inner
+    except RedisConnectionError as wrapped:
+        assert classify_graph_error(wrapped) == 'network_unreachable'
+        assert graph_error_errno(wrapped) == 101
+    try:
+        try:
+            raise ConnectionRefusedError(111, 'Connection refused')
+        except ConnectionRefusedError as inner:
+            raise RedisConnectionError('Error connecting to db.invalid') from inner
+    except RedisConnectionError as wrapped:
+        assert classify_graph_error(wrapped) == 'connection_refused'
+        assert graph_error_errno(wrapped) == 111
+    assert graph_error_errno(RuntimeError('no errno here')) is None
 
 
 @pytest.mark.parametrize('host', ['https://db.example.org', 'db.example.org:6380/path', 'db example.org'])

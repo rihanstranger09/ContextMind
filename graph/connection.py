@@ -14,43 +14,76 @@ GRAPH_ERROR_HINTS = {
     'dns_failed': 'The hostname does not resolve in public DNS. Re-copy the host value exactly from the provider console (hostname only: no https://, no port, no path, no spaces).',
     'connection_refused': 'The host resolved but refused the connection. Check the port value and that the FalkorDB instance is running (not paused or stopped).',
     'connection_closed': 'The server closed the connection during setup. Usually a TLS mismatch (toggle FALKORDB_SSL) or the port is not the Redis-protocol port.',
+    'network_unreachable': 'No network route to that host from Vercel. The value is likely the provider INTERNAL/private endpoint; copy the EXTERNAL/public Redis endpoint from the provider console instead, and check any IP allowlist.',
     'unreachable': 'Host could not be reached. Check host/port values, whether the endpoint requires TLS (FALKORDB_SSL=true), and that the instance is running and publicly reachable.',
     'server_error': 'The database answered with an error. Confirm this endpoint is a FalkorDB (graph module) instance.',
     'unknown': 'Unclassified connection failure. Re-check every connection variable against the provider console.',
 }
 
 
+def _error_chain(error):
+    chain, seen, current = [], set(), error
+    while current is not None and id(current) not in seen and len(chain) < 6:
+        chain.append(current)
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return chain
+
+
+def graph_error_errno(error):
+    """First OS errno in the chain (a bare integer is safe to expose), else None."""
+    for link in _error_chain(error):
+        errno = getattr(link, 'errno', None)
+        if isinstance(errno, int):
+            return errno
+    return None
+
+
 def classify_graph_error(error):
-    """Map a config/driver exception to one safe category; never returns messages."""
-    name = type(error).__name__
-    module = type(error).__module__ or ''
-    text = str(error).upper()
+    """Map a config/driver exception to one safe category; never returns messages.
+
+    Drivers wrap socket errors, so the whole __cause__/__context__ chain is
+    inspected: class names, errno values, and token-wise message matches.
+    """
+    import socket as _socket
+    chain = _error_chain(error)
+    names = [type(link).__name__ for link in chain]
+    modules = [type(link).__module__ or '' for link in chain]
+    texts = [str(link).upper() for link in chain]
+    errnos = [getattr(link, 'errno', None) for link in chain]
+
+    def any_text(*tokens):
+        return any(token in text for text in texts for token in tokens)
+
     if isinstance(error, ValueError):
         return 'config_invalid'
-    if name.startswith('Authentication') or 'WRONGPASS' in text or 'NOAUTH' in text \
-            or 'INVALID USERNAME-PASSWORD' in text or 'NO PASSWORD IS SET' in text:
+    if any(name.startswith('Authentication') for name in names) \
+            or any_text('WRONGPASS', 'NOAUTH', 'INVALID USERNAME-PASSWORD', 'NO PASSWORD IS SET'):
         return 'auth_failed'
-    if module.startswith('ssl') or 'SSL' in name.upper() or 'SSL' in text or 'CERTIFICATE' in text:
+    if any(module.startswith('ssl') for module in modules) \
+            or any('SSL' in name.upper() for name in names) or any_text('SSL', 'CERTIFICATE'):
         return 'tls_failed'
-    if isinstance(error, TimeoutError) or name in ('TimeoutError', 'ReadTimeout', 'ConnectTimeout'):
+    if any(isinstance(link, TimeoutError) for link in chain) \
+            or any(name in ('TimeoutError', 'ReadTimeout', 'ConnectTimeout') for name in names) \
+            or 110 in errnos:
         return 'timeout'
-    # Sub-classify connection failures; wrapped driver errors keep socket
-    # wording in their message, which is matched token-wise (never echoed).
-    import socket as _socket
-    if isinstance(error, _socket.gaierror) or 'NAME OR SERVICE NOT KNOWN' in text \
-            or 'NAME RESOLUTION' in text or 'FAILED TO RESOLVE' in text:
+    if any(isinstance(link, _socket.gaierror) for link in chain) \
+            or any_text('NAME OR SERVICE NOT KNOWN', 'NAME RESOLUTION', 'FAILED TO RESOLVE', 'NXDOMAIN'):
         return 'dns_failed'
-    if isinstance(error, ConnectionRefusedError) or 'CONNECTION REFUSED' in text \
-            or getattr(error, 'errno', None) == 111:
+    if any(isinstance(link, ConnectionRefusedError) for link in chain) \
+            or 111 in errnos or any_text('CONNECTION REFUSED'):
         return 'connection_refused'
-    if isinstance(error, (ConnectionResetError, BrokenPipeError, EOFError)) \
-            or 'CONNECTION CLOSED' in text or 'RESET BY PEER' in text or 'EOF OCCURRED' in text:
+    if any(isinstance(link, (ConnectionResetError, BrokenPipeError, EOFError)) for link in chain) \
+            or 104 in errnos or any_text('CONNECTION CLOSED', 'RESET BY PEER', 'EOF OCCURRED'):
         return 'connection_closed'
-    if name in ('ConnectionError', 'ConnectionRefusedError', 'ConnectionResetError',
-                'gaierror', 'NewConnectionError', 'BusyLoadingError') \
-            or isinstance(error, (ConnectionError, OSError)):
+    if any(errno in (101, 113) for errno in errnos) \
+            or any_text('NETWORK IS UNREACHABLE', 'NO ROUTE TO HOST', 'HOST IS DOWN'):
+        return 'network_unreachable'
+    if any(name in ('ConnectionError', 'ConnectionRefusedError', 'ConnectionResetError',
+                    'gaierror', 'NewConnectionError', 'BusyLoadingError') for name in names) \
+            or any(isinstance(link, (ConnectionError, OSError)) for link in chain):
         return 'unreachable'
-    if name in ('ResponseError', 'DataError'):
+    if any(name in ('ResponseError', 'DataError') for name in names):
         return 'server_error'
     return 'unknown'
 
