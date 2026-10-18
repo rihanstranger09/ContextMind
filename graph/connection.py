@@ -3,6 +3,42 @@ import os
 from app import config  # load ignored .env before reading connection settings
 from urllib.parse import unquote, urlsplit
 
+# Safe, credential-free diagnostics for /api/health. Driver error messages can
+# embed hostnames, so only these coarse categories (and static hints) may
+# ever leave the server.
+GRAPH_ERROR_HINTS = {
+    'config_invalid': 'Check variable formats: numeric port, plain hostname without https://, and no FALKOR_URL mixed with individual settings.',
+    'auth_failed': 'The database rejected the credentials. Check the password variable, and add the provider-issued username variable if your instance has one.',
+    'tls_failed': 'TLS handshake failed. Check whether the endpoint requires TLS (FALKORDB_SSL=true) or is plain Redis protocol.',
+    'timeout': 'Connection timed out. The instance may be paused, or its host/port may be unreachable from the deployment region.',
+    'unreachable': 'Host could not be reached. Check host/port values, whether the endpoint requires TLS (FALKORDB_SSL=true), and that the instance is running and publicly reachable.',
+    'server_error': 'The database answered with an error. Confirm this endpoint is a FalkorDB (graph module) instance.',
+    'unknown': 'Unclassified connection failure. Re-check every connection variable against the provider console.',
+}
+
+
+def classify_graph_error(error):
+    """Map a config/driver exception to one safe category; never returns messages."""
+    name = type(error).__name__
+    module = type(error).__module__ or ''
+    text = str(error).upper()
+    if isinstance(error, ValueError):
+        return 'config_invalid'
+    if name.startswith('Authentication') or 'WRONGPASS' in text or 'NOAUTH' in text \
+            or 'INVALID USERNAME-PASSWORD' in text or 'NO PASSWORD IS SET' in text:
+        return 'auth_failed'
+    if module.startswith('ssl') or 'SSL' in name.upper() or 'SSL' in text or 'CERTIFICATE' in text:
+        return 'tls_failed'
+    if isinstance(error, TimeoutError) or name in ('TimeoutError', 'ReadTimeout', 'ConnectTimeout'):
+        return 'timeout'
+    if name in ('ConnectionError', 'ConnectionRefusedError', 'ConnectionResetError',
+                'gaierror', 'NewConnectionError', 'BusyLoadingError') \
+            or isinstance(error, (ConnectionError, OSError)):
+        return 'unreachable'
+    if name in ('ResponseError', 'DataError'):
+        return 'server_error'
+    return 'unknown'
+
 
 def connection_options():
     """Return FalkorDB client kwargs for a private instance or a TLS cloud endpoint.

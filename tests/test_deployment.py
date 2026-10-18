@@ -95,6 +95,8 @@ def test_unreachable_graph_fails_closed_but_pages_still_serve(monkeypatch):
             body = health.json()
             assert body['status'] == 'unhealthy' and body['graph_ready'] is False
             assert body['graph_mode'] == 'unavailable' and body['graph_configured'] == 'falkordb'
+            # Only a safe category + static hint are exposed for diagnosis.
+            assert body['graph_error'] == 'unreachable' and body['graph_error_hint']
             assert 'db.invalid' not in health.text  # endpoint details never reflected
             assert client.get('/api/entities').status_code == 503
             assert client.get('/dashboard').status_code == 200

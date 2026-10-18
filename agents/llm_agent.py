@@ -1,10 +1,30 @@
-"""Bounded OpenAI function-calling agent over NovaPay graph reads; no arbitrary Cypher."""
+"""Bounded LLM function-calling agent over NovaPay graph reads; no arbitrary Cypher.
+
+Two providers share this one loop through the OpenAI SDK interface: OpenAI
+directly, and Cohere through its OpenAI-compatibility endpoint, which
+supports the same tool-calling contract. Provider choice changes only the
+client base URL, model, and the reported agent_mode label - tool bounds and
+citation checks are identical.
+"""
 import json
 import re
 from datetime import datetime, timezone
 from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from graph.tools import Tools, normalize
+
+COHERE_BASE_URL = 'https://api.cohere.ai/compatibility/v1'
+
+
+def create_client(provider, api_key):
+    """Build the SDK client for a live provider. Keys come from the environment only."""
+    from openai import OpenAI
+    if provider == 'cohere':
+        return OpenAI(api_key=api_key, base_url=COHERE_BASE_URL, max_retries=1)
+    if provider == 'openai':
+        return OpenAI(api_key=api_key, max_retries=1)
+    raise ValueError('Live client requires openai or cohere')
+
 
 ABSTAIN = 'No evidence exists in the connected NovaPay graph to answer this question.'
 MAX_CALLS = 4
@@ -71,8 +91,10 @@ def slim(node):
 
 
 class LiveAgent:
-    def __init__(self, store, client, model='gpt-4o-mini'):
-        self.store, self.client, self.model = store, client, model
+    def __init__(self, store, client, model='gpt-4o-mini', provider='openai'):
+        if provider not in ('openai', 'cohere'):
+            raise ValueError('LiveAgent provider must be openai or cohere')
+        self.store, self.client, self.model, self.provider = store, client, model, provider
         self.tools = Tools(store)
 
     def execute(self, name, arguments):
@@ -170,7 +192,7 @@ class LiveAgent:
                   'citation': item['ref']} for item, path in zip(used, paths)]
         now = datetime.now(timezone.utc)
         result = dict(id='trace_' + uuid4().hex, question=question, answer=answer,
-                      agent_mode='openai_tool_calling', model=self.model, intent='agent',
+                      agent_mode=self.provider + '_tool_calling', model=self.model, intent='agent',
                       facts=[{'text': t['label'], 'path_indices': [i], 'citation': t['citation']}
                              for i, t in enumerate(trace)], sources=sources, graph_trace=trace,
                       tool_steps=steps, recommended_actions=[], resolved_entities=[],
