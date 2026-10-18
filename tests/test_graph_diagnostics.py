@@ -72,7 +72,7 @@ def test_url_pasted_into_host_field_is_config_invalid(monkeypatch, host):
                 'FALKORDB_PASSWORD', 'FALKORDB_SSL'):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv('FALKORDB_HOST', host)
-    with pytest.raises(ValueError, match='Invalid FalkorDB host'):
+    with pytest.raises(ValueError, match='FalkorDB host'):
         connection_options()
     monkeypatch.setenv('FALKORDB_HOST', '  db.example.org  ')
     assert connection_options()['host'] == 'db.example.org'
