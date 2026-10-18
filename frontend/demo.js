@@ -8,10 +8,10 @@ if (location.protocol === 'http:' || location.protocol === 'https:') {
   try {
     const response = await fetch('/api/health?workspace='+(new URLSearchParams(location.search).get('workspace')==='falkordb'?'falkordb':'novapay'), {cache: 'no-store', signal: AbortSignal.timeout(10000)});
     const health = await response.json();
-    if (!response.ok || health.status !== 'healthy') throw new Error('Unhealthy service');
-    status.textContent = `Healthy · ${health.version} · Graph mode: ${health.graph_mode} · Workspace: ${health.company} · ${health.fictional_data?'Fictional data':'Public snapshot'} · Agent: ${health.synthesis}${health.synthesis==='openai_tool_calling'&&!health.llm_configured?' (key missing)':''}`;
+    if (!response.ok || health.status !== 'healthy') { status.textContent = `Unhealthy · Graph mode: ${health.graph_mode} · Error: ${health.graph_error||'unknown'} · ${health.graph_error_hint||''}`; if (document.querySelector('#proof-readiness')) document.querySelector('#proof-readiness').textContent='NOT READY · Backend health check failed ('+(health.graph_error||'unknown')+'). Fix the deployment connection variables and redeploy.'; return; }
+    status.textContent = `Healthy · ${health.version} · Graph mode: ${health.graph_mode} · Workspace: ${health.company} · ${health.fictional_data?'Fictional data':'Public snapshot'} · Agent: ${health.synthesis}${health.synthesis.endsWith('tool_calling')&&!health.llm_configured?' (key missing)':''}`;
     if (document.querySelector('#proof-readiness')) document.querySelector('#proof-readiness').textContent = health.graph_mode==='falkordb'
-      ? (health.synthesis==='openai_tool_calling'&&!health.llm_configured?'NATIVE GRAPH READY · LLM KEY MISSING; not ready for a live-agent recording.':'NATIVE GRAPH READY · Verify an actual model tool call before claiming a live-agent recording.')
+      ? (health.synthesis.endsWith('tool_calling')&&!health.llm_configured?'NATIVE GRAPH READY · LLM KEY MISSING; not ready for a live-agent recording.':'NATIVE GRAPH READY · Verify an actual model tool call before claiming a live-agent recording.')
       : 'PREVIEW ONLY · JSON storage is active. Do not claim Cypher executed; switch to FalkorDB mode before recording native proof.';
   } catch {
     status.textContent = 'Health check failed. Serve this page through ContextMind and check /api/health before presenting the demo.';
