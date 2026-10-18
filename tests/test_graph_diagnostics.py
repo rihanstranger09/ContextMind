@@ -64,15 +64,32 @@ def test_wrapped_socket_errors_classify_through_the_chain():
     assert graph_error_errno(RuntimeError('no errno here')) is None
 
 
-@pytest.mark.parametrize('host', ['https://db.example.org', 'db.example.org:6380/path', 'db example.org', 'db.example.org:6380'])
-def test_url_pasted_into_host_field_is_config_invalid(monkeypatch, host):
-    from graph.connection import connection_options
+@pytest.fixture
+def clear_host_env(monkeypatch):
     for key in ('FALKOR_URL', 'FALKOR_HOST', 'FALKOR_PORT', 'FALKOR_USERNAME', 'FALKOR_PASSWORD',
-                'FALKOR_SSL', 'FALKOR_CA_CERTS', 'FALKORDB_PORT', 'FALKORDB_USERNAME',
-                'FALKORDB_PASSWORD', 'FALKORDB_SSL'):
+                'FALKOR_SSL', 'FALKOR_CA_CERTS', 'FALKORDB_HOST', 'FALKORDB_PORT',
+                'FALKORDB_USERNAME', 'FALKORDB_PASSWORD', 'FALKORDB_SSL'):
         monkeypatch.delenv(key, raising=False)
+
+
+@pytest.mark.parametrize('host', ['https://db.example.org', 'db.example.org:6380/path',
+                                  'db example.org', 'db.example.org:notaport'])
+def test_url_pasted_into_host_field_is_config_invalid(monkeypatch, clear_host_env, host):
+    from graph.connection import connection_options
     monkeypatch.setenv('FALKORDB_HOST', host)
     with pytest.raises(ValueError, match='FalkorDB host'):
         connection_options()
     monkeypatch.setenv('FALKORDB_HOST', '  db.example.org  ')
     assert connection_options()['host'] == 'db.example.org'
+
+
+def test_host_port_pasted_together_is_split_only_when_consistent(monkeypatch, clear_host_env):
+    from graph.connection import connection_options
+    monkeypatch.setenv('FALKORDB_HOST', 'db.example.org:6380')
+    config = connection_options()
+    assert (config['host'], config['port']) == ('db.example.org', 6380)
+    monkeypatch.setenv('FALKORDB_PORT', '6380')  # agreeing port variable: still fine
+    assert connection_options()['port'] == 6380
+    monkeypatch.setenv('FALKORDB_PORT', '9999')  # conflict stays a loud error
+    with pytest.raises(ValueError, match='conflicts with the port variable'):
+        connection_options()
