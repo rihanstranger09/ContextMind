@@ -11,7 +11,7 @@ GRAPH_ERROR_HINTS = {
     'auth_failed': 'The database rejected the credentials. Check the password variable, and add the provider-issued username variable if your instance has one.',
     'tls_failed': 'TLS handshake failed. Check whether the endpoint requires TLS (FALKORDB_SSL=true) or is plain Redis protocol.',
     'timeout': 'Connection timed out. The instance may be paused, or its host/port may be unreachable from the deployment region.',
-    'dns_failed': 'The hostname does not resolve in public DNS. Re-copy the host value exactly from the provider console (hostname only: no https://, no port, no path, no spaces).',
+    'dns_failed': 'The hostname does not resolve in public DNS (Lambda-style runtimes report this as Errno 16 EBUSY). In the provider console copy the EXTERNAL/public endpoint hostname only - not the internal endpoint, no https://, and put the port in its own variable. A quick local nslookup on the host should return a public IP.',
     'connection_refused': 'The host resolved but refused the connection. Check the port value and that the FalkorDB instance is running (not paused or stopped).',
     'connection_closed': 'The server closed the connection during setup. Usually a TLS mismatch (toggle FALKORDB_SSL) or the port is not the Redis-protocol port.',
     'network_unreachable': 'No network route to that host from Vercel. The value is likely the provider INTERNAL/private endpoint; copy the EXTERNAL/public Redis endpoint from the provider console instead, and check any IP allowlist.',
@@ -78,7 +78,9 @@ def classify_graph_error(error):
             or any(name in ('TimeoutError', 'ReadTimeout', 'ConnectTimeout') for name in names) \
             or 110 in errnos:
         return 'timeout'
-    if any(isinstance(link, _socket.gaierror) for link in chain) \
+    # Lambda-style sandboxes report getaddrinfo/DNS failure as OSError
+    # Errno 16 (EBUSY) rather than gaierror - treat it as DNS on this path.
+    if any(isinstance(link, _socket.gaierror) for link in chain) or 16 in errnos \
             or any_text('NAME OR SERVICE NOT KNOWN', 'NAME RESOLUTION', 'FAILED TO RESOLVE', 'NXDOMAIN'):
         return 'dns_failed'
     if any(isinstance(link, ConnectionRefusedError) for link in chain) \
@@ -146,8 +148,9 @@ def connection_options():
     host = host.strip() if isinstance(host, str) else host
     username = (username.strip() or None) if isinstance(username, str) else username
     # A URL or path pasted into the host field is a format error, not a DNS one.
-    if not host or '://' in host or '/' in host or any(ch.isspace() for ch in host) \
-            or not 1 <= port <= 65535:
+    # A single colon means "host:port" was pasted together (IPv6 has several).
+    if not host or '://' in host or '/' in host or host.count(':') == 1 \
+            or any(ch.isspace() for ch in host) or not 1 <= port <= 65535:
         raise ValueError('Invalid FalkorDB host or port')
     ca_certs = os.getenv('FALKOR_CA_CERTS') or None
     if ca_certs and not ssl:

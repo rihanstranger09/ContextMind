@@ -32,6 +32,18 @@ def test_classify_graph_error(error, expected):
     assert 'db.invalid' not in GRAPH_ERROR_HINTS[category]
 
 
+def test_lambda_ebusy_getaddrinfo_failure_is_dns_failed():
+    # Vercel/Lambda-style runtimes surface DNS failure as OSError Errno 16.
+    try:
+        try:
+            raise OSError(16, 'Device or resource busy')
+        except OSError as inner:
+            raise RedisConnectionError('Error connecting to db.invalid') from inner
+    except RedisConnectionError as wrapped:
+        assert classify_graph_error(wrapped) == 'dns_failed'
+        assert graph_error_errno(wrapped) == 16
+
+
 def test_wrapped_socket_errors_classify_through_the_chain():
     try:
         try:
@@ -52,7 +64,7 @@ def test_wrapped_socket_errors_classify_through_the_chain():
     assert graph_error_errno(RuntimeError('no errno here')) is None
 
 
-@pytest.mark.parametrize('host', ['https://db.example.org', 'db.example.org:6380/path', 'db example.org'])
+@pytest.mark.parametrize('host', ['https://db.example.org', 'db.example.org:6380/path', 'db example.org', 'db.example.org:6380'])
 def test_url_pasted_into_host_field_is_config_invalid(monkeypatch, host):
     from graph.connection import connection_options
     for key in ('FALKOR_URL', 'FALKOR_HOST', 'FALKOR_PORT', 'FALKOR_USERNAME', 'FALKOR_PASSWORD',
