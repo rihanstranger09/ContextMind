@@ -18,7 +18,8 @@ from graph.showcase import graph_showcase, company_showcase
 from agents.company_brain import Agent
 from agents.public_brain import PublicAgent
 from app.config import llm_config
-from agents.llm_agent import LiveAgent
+from agents.llm_agent import LiveAgent, create_client
+from graph.connection import GRAPH_ERROR_HINTS, classify_graph_error
 
 # Graph stores are built lazily and cached per workspace. On serverless hosts
 # (for example Vercel) a missing or unreachable hosted FalkorDB must not take
@@ -39,14 +40,15 @@ def _build_store(workspace):
         existing = getattr(app.state, attr, None)
         if existing is not None:
             return existing
-        failed_at = _STORE_FAILURES.get(workspace)
-        if failed_at is not None and monotonic() - failed_at < STORE_RETRY_SECONDS:
+        failure = _STORE_FAILURES.get(workspace)
+        if failure is not None and monotonic() - failure[0] < STORE_RETRY_SECONDS:
             raise HTTPException(503, 'Graph backend unavailable; check deployment configuration')
         try:
             built = Store(workspace=workspace)
-        except Exception:
-            # Connection errors can embed endpoint details; never reflect them.
-            _STORE_FAILURES[workspace] = monotonic()
+        except Exception as error:
+            # Connection errors can embed endpoint details; keep only a safe
+            # category for /api/health (see graph.connection.classify_graph_error).
+            _STORE_FAILURES[workspace] = (monotonic(), classify_graph_error(error))
             raise HTTPException(503, 'Graph backend unavailable; check deployment configuration') from None
         setattr(app.state, attr, built)
         _STORE_FAILURES.pop(workspace, None)
@@ -98,8 +100,9 @@ def health(workspace:Workspace="novapay"):
     # successful seed probe below may report healthy + graph_ready=true.
     try:
         cfg = llm_config()
-        synthesis = ('openai_tool_calling' if workspace=='novapay' and cfg['provider']=='openai' else 'deterministic graph evidence')
-        llm_ready = bool(cfg['api_key']) if workspace=='novapay' and cfg['provider']=='openai' else False
+        live = workspace=='novapay' and cfg['provider'] in ('openai', 'cohere')
+        synthesis = (cfg['provider'] + '_tool_calling' if live else 'deterministic graph evidence')
+        llm_ready = bool(cfg['api_key']) if live else False
     except ValueError:
         synthesis, llm_ready = 'misconfigured', False
     try:
@@ -114,9 +117,18 @@ def health(workspace:Workspace="novapay"):
     try:
         if not store(workspace).get('sys_database' if workspace=='novapay' else 'org_falkordb'):
             raise RuntimeError('Seed data unavailable')
-    except Exception:
-        return JSONResponse(status_code=503, content=dict(status='unhealthy', graph_ready=False, **metadata))
-    return dict(status='healthy', graph_ready=True, **metadata)
+    except HTTPException:
+        # Store could not be built; report only the cached safe category.
+        failure = _STORE_FAILURES.get(workspace)
+        category = failure[1] if failure else 'unknown'
+        return JSONResponse(status_code=503, content=dict(status='unhealthy', graph_ready=False,
+                            graph_error=category, graph_error_hint=GRAPH_ERROR_HINTS[category], **metadata))
+    except Exception as error:
+        category = classify_graph_error(error) if not isinstance(error, RuntimeError) else 'seed_missing'
+        hint = GRAPH_ERROR_HINTS.get(category, 'Graph opened but the seeded records were not found; check FALKOR_GRAPH names the intended distinct graph.')
+        return JSONResponse(status_code=503, content=dict(status='unhealthy', graph_ready=False,
+                            graph_error=category, graph_error_hint=hint, **metadata))
+    return dict(status='healthy', graph_ready=True, graph_error=None, **metadata)
 
 @app.get('/dashboard', include_in_schema=False)
 @app.get('/dashboard/', include_in_schema=False)
@@ -133,14 +145,15 @@ def investigations(limit:int=Query(10,ge=1,le=20),workspace:Workspace='novapay')
 @app.post('/api/chat')
 def chat(body:Question,workspace:Workspace='novapay'):
     cfg = llm_config()
-    if workspace == 'novapay' and cfg['provider'] == 'openai':
+    if workspace == 'novapay' and cfg['provider'] in ('openai', 'cohere'):
         if store(workspace).backend != 'falkordb':
             raise HTTPException(503, 'Live agent requires native FalkorDB; JSON preview is not a native demo')
         if not cfg['api_key']:
-            raise HTTPException(503, 'Live agent is selected but OPENAI_API_KEY is not configured')
-        from openai import OpenAI, AuthenticationError, RateLimitError, APITimeoutError
+            raise HTTPException(503, 'Live agent is selected but ' + cfg['api_key_env'] + ' is not configured')
+        from openai import AuthenticationError, RateLimitError, APITimeoutError
         try:
-            return LiveAgent(store(workspace), OpenAI(api_key=cfg['api_key'], max_retries=1), cfg['model']).ask(body.question)
+            return LiveAgent(store(workspace), create_client(cfg['provider'], cfg['api_key']),
+                             cfg['model'], provider=cfg['provider']).ask(body.question)
         except AuthenticationError:
             raise HTTPException(503, 'LLM authentication failed; check your local secret') from None
         except RateLimitError:

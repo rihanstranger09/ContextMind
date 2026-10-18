@@ -24,17 +24,19 @@ test graphs, or with disposable recording graphs (`contextmind_recording_*`).
 Application startup seeds each graph from the committed snapshots **only if
 that graph is empty**, so redeploys never wipe saved investigations.
 
-## Status (2026-10-18)
+## Status (updated 2026-10-18, after owner setup)
 
 | Step | State |
 |---|---|
 | Deployment code + config in this PR | Done |
 | Local native verification (FalkorDB 4.16.3, distinct local graph) | **PASS** — verifier green on health + both proofs; JSON mode correctly FAILs |
-| Test suite | 105 passed + native integration test passed locally (1 skipped without a database) |
-| Separate Vercel project `contextmind` | Created; linked to `rihanstranger09/ContextMind` |
+| Test suite | 119 passed + native integration test passed locally (1 skipped without a database) |
+| Separate Vercel project `contextmind` | Created; linked to `rihanstranger09/ContextMind`; first builds READY; production alias answers publicly (Deployment Protection relaxed by owner) |
 | Non-secret env (`GRAPH_BACKEND`, `FALKOR_GRAPH`, `LLM_PROVIDER`) | Set on the project |
-| Hosted FalkorDB credentials | **Pending — owner adds them privately in Vercel (below). Never paste them in chat, issues, PRs or recordings.** |
-| Hosted `/api/health` + both native-Cypher proofs verified | **Pending** the credentials above |
+| Hosted FalkorDB credentials | Owner added `FALKORDB_HOST`/`PORT`/`PASSWORD` (Production target). No username/TLS variables set yet. |
+| Hosted `/api/health` | Reachable but **503 `graph_mode: unavailable`** — the function cannot open the hosted graph yet. Health now returns a safe `graph_error` category + static `graph_error_hint` (never endpoint details); the dashboard "Connection error" modal is this 503 surfacing. Fix per Troubleshooting below. |
+| Hosted `/api/health` + both native-Cypher proofs verified | **Pending** the connection fix above |
+| Cohere live agent (optional) | Code-ready (`LLM_PROVIDER=cohere`, OpenAI-compatibility endpoint, mock-tested). No `COHERE_API_KEY` on the project yet; a live call cannot be claimed until verified against the working native graph. |
 | Revised 1× native demo video | **Pending** — record only after hosted verification passes (gate below) |
 
 Until the hosted verification row passes, no Vercel URL from this project may
@@ -82,11 +84,22 @@ The `FALKOR_HOST` / `FALKOR_PORT` / `FALKOR_USERNAME` / `FALKOR_PASSWORD` /
 
 ### Optional, later
 
-- **Live agent:** `LLM_PROVIDER=openai`, `OPENAI_API_KEY` (Sensitive),
-  `MODEL_NAME`. Only after a real provider call is verified end to end may
-  the deployment be presented as using the live tool-calling agent; until
-  then it stays `disabled`/deterministic. Without a key the chat endpoint
-  returns 503 rather than silently substituting the deterministic router.
+- **Live agent (OpenAI or Cohere):** `LLM_PROVIDER=openai` with
+  `OPENAI_API_KEY` (Sensitive), **or** `LLM_PROVIDER=cohere` with
+  `COHERE_API_KEY` (Sensitive). Cohere runs through Cohere's
+  OpenAI-compatibility endpoint (`https://api.cohere.ai/compatibility/v1`)
+  with the same bounded tool loop; `MODEL_NAME` defaults to
+  `command-a-03-2025` for Cohere and `gpt-4o-mini` for OpenAI. The key must
+  exist **on the `contextmind` project** — keys on other projects (e.g.
+  `company-brain`) are not visible to this app and cannot be copied by an
+  assistant without exposing them. Only after a real provider call is
+  verified end to end (health `synthesis: <provider>_tool_calling`,
+  `llm_configured: true`, plus one browser question answered with recorded
+  tool steps) may the deployment be presented as using the live agent;
+  until then keep `disabled`/deterministic. Without a key, or without a
+  working native graph, chat returns 503 rather than silently substituting
+  the deterministic router. Trial-tier keys are rate-limited: expect
+  occasional 503 "rate limit" responses under load, by design.
 - **Operator writes:** leave `INGEST_TOKEN` **unset** in Production.
   Writes are disabled without it. It exists only for a controlled,
   preview-scoped recording window (gate below) and must be removed after.
@@ -131,11 +144,19 @@ date. Anything else (JSON mode, 503 `unavailable`, partial seed) exits 1.
 
 Troubleshooting, in order: a Vercel login page instead of the app →
 Deployment Protection is still covering this URL (see Exposure notes).
-503 with `graph_mode: unavailable` → credentials
-missing/wrong, a required username or `FALKORDB_SSL=true` not set, or no
-redeploy after the last env change. `graph_mode: demo` → `GRAPH_BACKEND`
-did not reach the deployment. Only the first request slow → initial seeding;
-pre-seed (above) or let the verifier retries finish.
+503 with `graph_mode: unavailable` → read the safe `graph_error` field in
+the same response and follow its `graph_error_hint`: `auth_failed` =
+rejected credentials (re-check the password in the provider console; add
+`FALKORDB_USERNAME` if the instance issued a username); `unreachable` /
+`timeout` = wrong host/port, endpoint actually requires TLS
+(`FALKORDB_SSL=true`), instance paused, or not publicly reachable;
+`tls_failed` = TLS setting disagrees with the endpoint; `config_invalid` =
+bad variable formats (non-numeric port, `https://` in the host, or
+`FALKOR_URL` mixed with individual settings); `seed_missing` = connected,
+but `FALKOR_GRAPH` does not name the seeded distinct graph. Always redeploy
+after an env change. `graph_mode: demo` → `GRAPH_BACKEND` did not reach
+the deployment. Only the first request slow → initial seeding; pre-seed
+(above) or let the verifier retries finish.
 
 ## Recording gate for the revised 1× native demo video
 
