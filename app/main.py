@@ -19,7 +19,7 @@ from agents.company_brain import Agent
 from agents.public_brain import PublicAgent
 from app.config import llm_config
 from agents.llm_agent import LiveAgent, create_client
-from graph.connection import GRAPH_ERROR_HINTS, classify_graph_error
+from graph.connection import GRAPH_ERROR_HINTS, classify_graph_error, graph_error_errno
 
 # Graph stores are built lazily and cached per workspace. On serverless hosts
 # (for example Vercel) a missing or unreachable hosted FalkorDB must not take
@@ -48,7 +48,7 @@ def _build_store(workspace):
         except Exception as error:
             # Connection errors can embed endpoint details; keep only a safe
             # category for /api/health (see graph.connection.classify_graph_error).
-            _STORE_FAILURES[workspace] = (monotonic(), classify_graph_error(error))
+            _STORE_FAILURES[workspace] = (monotonic(), classify_graph_error(error), graph_error_errno(error))
             raise HTTPException(503, 'Graph backend unavailable; check deployment configuration') from None
         setattr(app.state, attr, built)
         _STORE_FAILURES.pop(workspace, None)
@@ -122,7 +122,8 @@ def health(workspace:Workspace="novapay"):
         failure = _STORE_FAILURES.get(workspace)
         category = failure[1] if failure else 'unknown'
         return JSONResponse(status_code=503, content=dict(status='unhealthy', graph_ready=False,
-                            graph_error=category, graph_error_hint=GRAPH_ERROR_HINTS[category], **metadata))
+                            graph_error=category, graph_error_hint=GRAPH_ERROR_HINTS[category],
+                            graph_error_errno=failure[2] if failure and len(failure) > 2 else None, **metadata))
     except Exception as error:
         category = classify_graph_error(error) if not isinstance(error, RuntimeError) else 'seed_missing'
         hint = GRAPH_ERROR_HINTS.get(category, 'Graph opened but the seeded records were not found; check FALKOR_GRAPH names the intended distinct graph.')
