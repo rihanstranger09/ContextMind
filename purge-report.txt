@@ -1,0 +1,39 @@
+repo=rihanstranger09/ContextMind
+token-actor: 
+
+### REST DELETE issue #6
+RESULT: FAILED (exit 1)
+    {
+      "message": "Not Found",
+      "documentation_url": "https://docs.github.com/rest",
+      "status": "404"
+    }gh: Not Found (HTTP 404)
+
+### REST PATCH issue #6 closed
+RESULT: SUCCESS
+    {"url":"https://api.github.com/repos/rihanstranger09/ContextMind/issues/6","repository_url":"https://api.github.com/repos/rihanstranger09/ContextMind","labels_url":"https://api.github.com/repos/rihanstranger09/ContextMind/issues/6/labels{/name}","comments_url":"https://api.github.com/repos/rihanstranger09/ContextMind/issues/6/comments","events_url":"https://api.github.com/repos/rihanstranger09/ContextMind/issues/6/events","html_url":"https://github.com/rihanstranger09/ContextMind/issues/6","id":5912092774,"node_id":"I_kwDOVD8Vgs8AAAABYGNgZg","number":6,"title":"[temp] delete-permission probe","user":{"login":"rihanstranger09","id":224602856,"node_id":"U_kgDODWMq6A","avatar_url":"https://avatars.githubusercontent.com/u/224602856?v=4","gravatar_id":"","url":"https://api.github.com/users/rihanstranger09","html_url":"https://github.com/rihanstranger09","followers_url":"https://api.github.com/users/rihanstranger09/followers","following_url":"https://api.github.com/users/rihanstranger09/following{/other_user}","gists_url":"https://api.github.com/users/rihanstranger09/gists{/gist_id}","starred_url":"https://api.github.com/users/rihanstranger09/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/rihanstranger09/subscriptions","organizations_url":"https://api.github.com/users/rihanstranger09/orgs","repos_url":"https://api.github.com/users/rihanstranger09/repos","events_url":"https://api.github.com/users/rihanstranger09/events{/privacy}","received_events_url":"https://api.github.com/users/rihanstranger09/received_events","type":"User","user_view_type":"public","site_admin":false},"labels":[],"state":"closed","locked":false,"assignees":[],"milestone":null,"comments":0,"created_at":"2026-10-18T17:18:44Z","updated_at":"2026-10-18T17:38:43Z","closed_at":"2026-10-18T17:38:43Z","assignee":null,"author_association":"OWNER","active_lock_reason":null,"sub_issues_summary":{"total":0,"completed":0,"percent_completed":0},"issue_dependencies_summary":{"blocked_by":0,"total_blocked_by":0,"blocking":0,"total_blocking":0},"body":"temporary probe - will be removed immediately","closed_by":{"login":"github-actions[bot]","id":41898282,"node_id":"MDM6Qm90NDE4OTgyODI=","avatar_url":"https://avatars.githubusercontent.com/in/15368?v=4","gravatar_id":"","url":"https://api.github.com/users/github-actions%5Bbot%5D","html_url":"https://github.com/apps/github-actions","followers_url":"https://api.github.com/users/github-actions%5Bbot%5D/followers","following_url":"https://api.github.com/users/github-actions%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/github-actions%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/github-actions%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/github-actions%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/github-actions%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/github-actions%5Bbot%5D/repos","events_url":"https://api.github.com/users/github-actions%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/github-actions%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"reactions":{"url":"https://api.github.com/repos/rihanstranger09/ContextMind/issues/6/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"timeline_url":"https://api.github.com/repos/rihanstranger09/ContextMind/issues/6/timeline","performed_via_github_app":{"id":4187077,"client_id":"Iv23lifFg4c9eT1T6hLC","slug":"arena-ai-coding-agent","node_id":"A_kwDOEbSuLc4AP-PF","owner":{"login":"arena-agent","id":297053741,"node_id":"U_kgDOEbSuLQ","avatar_url":"https://avatars.githubusercontent.com/u/297053741?v=4","gravatar_id":"","url":"https://api.github.com/users/arena-agent","html_url":"https://github.com/arena-agent","followers_url":"https://api.github.com/users/arena-agent/followers","following_url":"https://api.github.com/users/arena-agent/following{/other_user}","gists_url":"https://api.github.com/users/arena-agent/gists{/gist_id}","starred_url":"https://api.github.com/users/arena-agent/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/arena-agent/subscriptions","organizations_url":"https://api.github.com/users/arena-agent/orgs","repos_url":"https://api.github.com/users/arena-agent/repos","events_url":"https://api.github.com/users/arena-agent/events{/privacy}","received_events_url":"https://api.github.com/users/arena-agent/received_events","type":"User","user_view_type":"public","site_admin":false},"name":"Arena AI Coding Agent","description":"Connect Arena to GitHub to allow Arena's Coding Agent to do work for you in your repositories\r\n\r\n","external_url":"https://arena.ai","html_url":"https://github.com/apps/arena-ai-coding-agent","created_at":"2026-06-30T23:43:21Z","updated_at":"2026-09-01T17:53:01Z","permissions":{"actions":"read","checks":"read","contents":"write","emails":"read","issues":"read","members":"read","metadata":"read","pull_requests":"write","repository_hooks":"write","statuses":"read","workflows":"write"},"events":["pull_request","push"]},"state_reason":"completed","pinned_comment":null}
+
+issue #6 node_id: I_kwDOVD8Vgs8AAAABYGNgZg
+
+### GraphQL deleteIssue
+RESULT: FAILED (exit 1)
+    {"data":{"deleteIssue":null},"errors":[{"type":"FORBIDDEN","path":["deleteIssue"],"locations":[{"line":1,"column":11}],"message":"Viewer not authorized to delete"}]}gh: Viewer not authorized to delete
+
+### REST DELETE PR #1
+RESULT: FAILED (exit 1)
+    {
+      "message": "Not Found",
+      "documentation_url": "https://docs.github.com/rest",
+      "status": "404"
+    }gh: Not Found (HTTP 404)
+
+PR #1 node_id: PR_kwDOVD8Vgs8AAAABH9vJmA
+
+### GraphQL archivePullRequest
+RESULT: FAILED (exit 1)
+    {"data":{"archivePullRequest":null},"errors":[{"type":"FORBIDDEN","path":["archivePullRequest"],"locations":[{"line":1,"column":11}],"message":"github-actions[bot] does not have permission to archive pull request PR_kwDOVD8Vgs8AAAABH9vJmA."}]}gh: github-actions[bot] does not have permission to archive pull request PR_kwDOVD8Vgs8AAAABH9vJmA.
+
+### verification
+issues: 
+pr1: 1
+old_runs: 0
