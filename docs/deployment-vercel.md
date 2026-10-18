@@ -36,7 +36,7 @@ that graph is empty**, so redeploys never wipe saved investigations.
 | Hosted FalkorDB credentials | Owner added `FALKORDB_HOST`/`PORT`/`PASSWORD` (Production target). Live diagnosis then showed the host value was pasted as `hostname:port` (parser now splits it when consistent) and the endpoint is **plain Redis protocol, not TLS** — `FALKORDB_SSL=false` is set on the project; do not enable TLS for this endpoint. No username variable set. |
 | Hosted `/api/health` | Reachable but **503 `graph_mode: unavailable`**, diagnosed live: `redis ConnectionError` ← `OSError` **Errno 16** — on Lambda-style runtimes (Vercel functions) that is **DNS resolution failure** in `getaddrinfo`, i.e. the current `FALKORDB_HOST` value does not resolve publicly (wrong/internal endpoint or malformed value), with and without TLS. Health now reports this as `graph_error: dns_failed` with a static hint; the dashboard "Connection error" modal is this 503 surfacing. Owner fix: re-copy the **external/public** endpoint hostname + separate port from the provider console, then redeploy. |
 | Hosted `/api/health` + both native-Cypher proofs verified | **Pending** the connection fix above |
-| Cohere live agent (optional) | Code-ready (`LLM_PROVIDER=cohere`, OpenAI-compatibility endpoint, mock-tested). No `COHERE_API_KEY` on the project yet; a live call cannot be claimed until verified against the working native graph. |
+| Cohere live agent (optional) | Key configured on the project and `LLM_PROVIDER=cohere` enabled; health reports `cohere_tool_calling` against the verified native graph. The first live run executed the fixed tools and returned evidence, but the draft was withheld by the per-sentence citation standard (recorded `grounding.status: rejected`); treat as live only after a fresh browser answer shows `agent_mode: cohere_tool_calling` with `[E#]` citations. |
 | Revised 1× native demo video | **Pending** — record only after hosted verification passes (gate below) |
 
 Until the hosted verification row passes, no Vercel URL from this project may
@@ -100,6 +100,19 @@ The `FALKOR_HOST` / `FALKOR_PORT` / `FALKOR_USERNAME` / `FALKOR_PASSWORD` /
   working native graph, chat returns 503 rather than silently substituting
   the deterministic router. Trial-tier keys are rate-limited: expect
   occasional 503 "rate limit" responses under load, by design.
+Citation standard: the agent shows no answer unless every sentence cites
+returned evidence (`[E#]`). Providers often format citations as `[E1, E3]`,
+`(E1)`, or `[E1-E3]`; the agent normalizes those groups to canonical tokens
+before validating, and spends at most one extra tools-free completion
+rewriting a structurally non-compliant draft, which is then re-validated
+under the same rules. A withheld answer distinguishes *no evidence*
+(“No evidence exists in the connected NovaPay graph…”) from *evidence found
+but answer withheld* (“…did not meet the citation standard…”). Every run
+records `grounding.status` (`passed` / `repaired` / `no_evidence` /
+`rejected`) and a coarse `reason`, inspectable via
+`/api/entities/{trace_id}` — use that, not the provider dashboard, to debug
+an abstention.
+
 - **Operator writes:** leave `INGEST_TOKEN` **unset** in Production.
   Writes are disabled without it. It exists only for a controlled,
   preview-scoped recording window (gate below) and must be removed after.
