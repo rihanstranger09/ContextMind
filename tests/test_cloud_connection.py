@@ -8,7 +8,9 @@ from graph.store import Store
 @pytest.fixture(autouse=True)
 def clear_connection_env(monkeypatch):
     for key in ('FALKOR_URL', 'FALKOR_HOST', 'FALKOR_PORT', 'FALKOR_USERNAME',
-                'FALKOR_PASSWORD', 'FALKOR_SSL', 'FALKOR_CA_CERTS'):
+                'FALKOR_PASSWORD', 'FALKOR_SSL', 'FALKOR_CA_CERTS',
+                'FALKORDB_HOST', 'FALKORDB_PORT', 'FALKORDB_USERNAME',
+                'FALKORDB_PASSWORD', 'FALKORDB_SSL'):
         monkeypatch.delenv(key, raising=False)
 
 

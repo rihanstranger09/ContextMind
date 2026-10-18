@@ -19,7 +19,10 @@ class Store:
         self.lock = RLock()
         self.batching = False
         self.seed_path = Path(seed_path or (PUBLIC_SEED if workspace=='falkordb' else SEED))
-        self.path = Path(path or ('.runtime/falkordb.json' if workspace=='falkordb' else '.runtime/demo.json'))
+        # JSON demo fallback persists under .runtime locally; serverless hosts
+        # (VERCEL is set by the platform) have a read-only bundle, so use /tmp.
+        runtime_dir = Path('/tmp/contextmind') if os.getenv('VERCEL') else Path('.runtime')
+        self.path = Path(path) if path else runtime_dir / ('falkordb.json' if workspace=='falkordb' else 'demo.json')
         if self.backend == 'falkordb':
             from falkordb import FalkorDB
             graph_name = os.getenv('FALKOR_GRAPH','contextmind') + ('_public_falkordb' if workspace=='falkordb' else '')

@@ -64,6 +64,15 @@ The dashboard’s **Demo guide** link opens instructions for testing chat, graph
 
 Public hosting may incur charges. This prototype has no authentication or rate limits, and answering questions persists traces. Use only the fictional dataset and limit public demo exposure; do not treat the demo as production-ready.
 
+## Vercel deployment (separate ContextMind project)
+
+Vercel's FastAPI preset serves `app/main.py` as one function (API + frontend). The committed `vercel.json` bundles `frontend/` and the two seed snapshots and gives the function room for first-hit seeding; Python is pinned by `.python-version`.
+
+1. Use the dedicated Vercel project **`contextmind`** linked to this repository — not the `company-brain` project. Non-secret variables are already set there: `GRAPH_BACKEND=falkordb`, `FALKOR_GRAPH=contextmind_vercel` (distinct hosted graphs), `LLM_PROVIDER=disabled`.
+2. The owner adds the hosted FalkorDB connection **privately in Vercel** (Settings → Environment Variables, Sensitive, Production + Preview): `FALKORDB_HOST`, `FALKORDB_PORT`, `FALKORDB_PASSWORD`, plus `FALKORDB_USERNAME`/`FALKORDB_SSL=true` only if the provider requires them — or one `FALKOR_URL=rediss://...` instead. Never commit these or paste them into chat, issues or recordings. Leave `INGEST_TOKEN` unset in production.
+3. Redeploy, optionally pre-seed with `python -m backend.seed`, then gate every claim on **`python scripts/verify_deployment.py https://<production-host>`** printing PASS (both workspace health checks native + both fixed Cypher proofs). Until then `/api/health` honestly returns 503 with `graph_ready: false`.
+4. The revised 1× native demo video stays **pending** that hosted PASS; record only via the disposable-graph gate in the [deployment guide](docs/deployment-vercel.md#recording-gate-for-the-revised-1-native-demo-video).
+
 ### Final submission checklist
 
 - [x] Implementation pushed to GitHub on `arena/bac5286a-contextmind` (pull request #2 is open).
