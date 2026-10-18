@@ -49,6 +49,7 @@ SAFE_CONFIG_MESSAGES = {
     'FalkorDB host is empty',
     'FalkorDB host must be a bare hostname (no scheme or path)',
     'FalkorDB host appears to include a port; put the port in its own variable',
+    'FalkorDB host includes a port that conflicts with the port variable',
     'FalkorDB host must not contain spaces',
     'Invalid FalkorDB host or port',
     'FALKOR_CA_CERTS requires TLS',
@@ -160,6 +161,17 @@ def connection_options():
         if flag not in ('true', 'false'):
             raise ValueError('FALKOR_SSL must be true or false')
         ssl = flag == 'true'
+        # Forgiving paste handling: "host:port" in the host variable is split
+        # only when the embedded port agrees with the port variable (or the
+        # port variable is unset). A disagreement stays a loud format error.
+        if isinstance(host, str) and host.strip().count(':') == 1:
+            maybe_host, _, maybe_port = host.strip().partition(':')
+            if maybe_host and maybe_port.isdigit():
+                embedded = int(maybe_port)
+                explicit = os.getenv('FALKOR_PORT') or os.getenv('FALKORDB_PORT')
+                if explicit and int(explicit) != embedded:
+                    raise ValueError('FalkorDB host includes a port that conflicts with the port variable')
+                host, port = maybe_host, embedded
 
     host = host.strip() if isinstance(host, str) else host
     username = (username.strip() or None) if isinstance(username, str) else username
